@@ -4,8 +4,7 @@ import { Relation } from './relation.js'
 import { Invariant } from './invariant.js'
 
 export class Model {
-  constructor(name, { atoms, relations, invariants, _relationTable, _atomSet }) {
-    this._name = name;
+  constructor({ atoms, relations, invariants, _relationTable, _atomSet }) {
     this._uid = Uid.next();
 
     if (_atomSet) {
@@ -39,7 +38,7 @@ export class Model {
       clonedRelationTable.set(entry[0], entry[1].clone());
     }
     return new Model(
-      this._name, {
+      {
         _atomSet: this._atoms,
         _relationTable: this._relations,
         invariants: this._invariantInput
