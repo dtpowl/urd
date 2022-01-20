@@ -89,12 +89,15 @@ export class Unique extends Invariant {
     if (relation != this._relation) { return {}; }
 
     let subject = atoms[0];
+    let objectAtoms = atoms.slice(1);
     let existingSaturations = relation.get(subject);
     let output = {
       unrelate: []
     };
-    existingSaturations.forEach((objectAtoms) => {
-      output.unrelate.push([this._relation, [subject].concat(objectAtoms)])
+    existingSaturations.forEach((existingObjectAtoms) => {
+      if (!objectAtoms.every((el, i) => el == existingObjectAtoms[i])) {
+        output.unrelate.push([this._relation, [subject].concat(existingObjectAtoms)])
+      }
     });
     return output;
   }

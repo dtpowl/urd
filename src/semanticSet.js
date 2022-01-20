@@ -30,6 +30,10 @@ export class SemanticSet {
     this._map.forEach((value, key) => cb(value));
   }
 
+  values() {
+    return this._map.values();
+  }
+
   static keyFor(el) {
     if (typeof el.semanticHashValue == 'function') {
       return el.semanticHashValue();
@@ -40,14 +44,14 @@ export class SemanticSet {
 
   static defaultHashValueFor(el) {
     if (typeof el.map == 'function') {
-      return String(el.map((subEl) => SemanticSet.keyFor(subEl)));
+      return '<' + String(el.map((subEl) => SemanticSet.keyFor(subEl))) + '>';
     }
 
     if (el.name || el.uid) {
       let parts = [
         el.constructor.name,
         el.name,
-        el.uid
+        el.uid,
       ].filter((x) => Boolean(x));
       return SemanticSet.defaultHashValueFor(parts);
     }
