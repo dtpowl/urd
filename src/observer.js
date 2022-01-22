@@ -1,8 +1,8 @@
 export class Observer {
-  constructor(relationName, atoms, effects) {
+  constructor(relationName, atoms, effect) {
     this._relationName = relationName;
     this._atoms = atoms;
-    this._effects = effects;
+    this._effect = effect;
   }
 
   check(model) {
@@ -12,7 +12,7 @@ export class Observer {
   consider(model, oldValue) {
     let newValue = model.check(this._relationName, ...this._atoms);
     if (newValue != oldValue) {
-      return this._effects(newValue);
+      return this._effect(newValue);
     } else {
       return null;
     }

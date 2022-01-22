@@ -39,6 +39,10 @@ export class Relation {
     return tableValue;
   }
 
+  relatedObjectsForSubject(subject) {
+    return Array.from(this.get(subject).values());
+  }
+
   relate(...atoms) {
     if (atoms.length != this._arity) {
       throw `Cannot relate; Wrong arity for relation ${this.name}`;

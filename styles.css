@@ -1,0 +1,7 @@
+div.scene > p.scene-head {
+  font-weight: bold;
+}
+
+div.scene > p.scene-body {
+  line-height: 0.75rem;
+}

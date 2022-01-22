@@ -3,6 +3,7 @@ import { Relation } from './relation.js';
 import { Unique, Symmetric } from './invariant.js';
 import { World } from './world.js'
 import { Observer } from './observer.js'
+import { Action } from './action.js'
 
 function init(window, document) {
   console.log("initializing");
