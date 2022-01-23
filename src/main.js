@@ -1,76 +1,232 @@
 import { World } from './world.js'
-import { Unique, Symmetric } from './invariant.js';
+import { Unique, Symmetric, Supervenient, Converse, Mutex } from './invariant.js';
 import { Observer } from './observer.js'
+import { IterableArithmetic } from './iterableArithmetic.js'
+import { SemanticSet } from './semanticSet.js'
 
 import { GameCoordinator } from './game/gameCoordinator.js'
 import { GamePresenter } from './game/gamePresenter.js'
 
-import { Scene } from './game/game.js'
+import { Concept } from './game/game.js'
 
-let den = new Scene(
-  'scene:den',
-  'The Den',
-  'the den',
-  'You are in your den. Nyar sleeps peacefully on the green chair.'
-);
-let yard = new Scene(
-  'scene:yard',
-  'The Yard',
-  'the yard',
-  "You are in your yard. Yesterday's light dusting of snow has melted away."
-);
-let dining = new Scene(
-  'scene:dining',
-  'The Dining Room',
-  'the dining room',
-  "You are in your dining room. The table is piled high with boxes and clearly disused."
-);
+let conceptTable = new Map();
+([
+  new Concept(
+    'person:player',
+    'You',
+    'you',
+    "It's you.",
+    { noAutomention: true }
+  ),
+  new Concept(
+    'scene:atelier',
+    'The Atelier',
+    'the atelier',
+    'You are in your studio. In the center of the room rests your trusty poesiograph. To the north, a pair of French doors open onto a balcony.'
+  ),
+  new Concept(
+    'scene:balcony',
+    'On the Balcony',
+    'the balcony',
+    'You stand on a balcony overlooking the city.'
+  ),
+  new Concept(
+    'object:p-graph',
+    'your poesiograph',
+    'a poesiograph',
+    'An elaborate device surmounted by a writing slate.',
+    { noAutomention: true }
+  ),
+  new Concept(
+    'object:crane',
+    'the paper crane',
+    'a paper crane',
+    'A folded paper crane.'
+  ),
+  new Concept(
+    'object:key',
+    'the brass key',
+    'a brass key',
+    'A weighty key, made of brass.'
+  ),
 
-let sceneTable = new Map();
-([den, yard, dining]).forEach((s) => {
-  sceneTable.set(s.name, s);
+  new Concept(
+    'word:ka',
+    'the word ka'
+  ),
+  new Concept(
+    'adjective:paper'
+  ),
+  new Concept(
+    'noun:key'
+  ),
+
+  new Concept(
+    'word:lo',
+    'the word lo'
+  ),
+  new Concept(
+    'adjective:glass'
+  ),
+  new Concept(
+    'noun:money'
+  ),
+
+  new Concept(
+    'word:beh',
+    'the word beh'
+  ),
+  new Concept(
+    'adjective:burning'
+  ),
+  new Concept(
+    'noun:bird'
+  ),
+
+]).forEach((s) => {
+  conceptTable.set(s.name, s);
 });
 
 
-let atoms = ['player'].concat(Array.from(sceneTable.keys()));
+let atoms = Array.from(conceptTable.keys());
 let relations = [
   ['locatedIn', 2],
-  ['adjacentTo', 2]
+  ['locusOf', 2],
+
+  ['canCarry', 2],
+  ['possesses', 2],
+  ['adjacentTo', 2],
+
+  ['knowsWord', 2],
+
+  ['hasAdjectiveMeaning', 2],
+  ['isAdjectiveMeaningOf', 2],
+
+  ['hasNounMeaning', 2],
+  ['isNounMeaningOf', 2],
+
+  ['hasSpokenAsAdjective', 2],
+  ['hasSpokenAsNoun', 2],
+
+  ['madeOfPaper', 1],
+  ['madeOfGlass', 1],
+  ['isBurning', 1],
 ];
 let invariants = [
-  ['locatedIn', Unique],
-  ['adjacentTo', Symmetric]
+  [['locatedIn'], Unique],
+  [['locusOf', 'locatedIn'], Converse],
+  [['adjacentTo'], Symmetric],
+  [['locatedIn', 'possesses'], Supervenient],
+
+  [['hasAdjectiveMeaning', 'isAdjectiveMeaningOf'], Converse],
+  [['hasNounMeaning', 'isNounMeaningOf'], Converse],
+
+  [['hasSpokenAsAdjective'], Unique],
+  [['hasSpokenAsNoun'], Unique],
 ];
-let observers = [
-  new Observer('locatedIn', ['player', 'scene:yard'],
-    (val) => {
-      if (val) { console.log('player entered yard'); }
+let derivedRelations = [
+  [
+    'canSee', 2, (subject) => {
+      return { which: [ 'locusOf', { firstWhich: ['locatedIn', subject] } ] }
     }
-  )
+  ],
+  [
+    'canTake', 2, (taker) => {
+      return {
+        and: [
+          { which: ['canSee', taker] },
+          { which: [ 'canCarry', taker ] },
+          { not: { which: [ 'possesses', taker ] } }
+        ]
+      }
+    }
+  ],
+  [
+    'canGoTo', 2, (goer) => {
+      return { which: [ 'adjacentTo', { firstWhich: ['locatedIn', goer] } ] }
+    }
+  ],
+  [
+    'hasSpoken', 2, (subject) => {
+      return {
+        or: [
+          { which: [ 'hasSpokenAsAdjective', subject ] },
+          { which: [ 'hasSpokenAsNoun', subject ] }
+        ]
+      }
+    }
+  ],
+  [
+    'hasExpressed', 2, (subject) => {
+      return {
+        or: [
+          { which: [ 'hasAdjectiveMeaning', { firstWhich: [ 'hasSpokenAsAdjective', subject ] } ] },
+          { which: [ 'hasNounMeaning', { firstWhich: [ 'hasSpokenAsNoun', subject ] } ] },
+        ]
+      }
+    }
+  ],
+  [
+    'hasCompletedAnExpression', 1, (subject) => {
+      return {
+        and: [
+          { subjects: 'hasSpokenAsAdjective' },
+          { subjects: 'hasSpokenAsNoun' }
+        ]
+      }
+    }
+  ]
 ];
 
 let world = new World({
   atoms: atoms,
   relations: relations,
+  derivedRelations: derivedRelations,
   invariants: invariants,
-  observers: observers,
+  observers: [],
   transitors: []
 }).event({
   relate: [
-    ['locatedIn', 'player', 'scene:dining'],
-    ['adjacentTo', 'scene:yard', 'scene:den'],
-    ['adjacentTo', 'scene:den', 'scene:dining']
+    ['locatedIn', 'person:player', 'scene:atelier'],
+    ['locatedIn', 'object:p-graph', 'scene:atelier'],
+    ['locatedIn', 'object:crane', 'scene:atelier'],
+    ['locatedIn', 'object:key', 'scene:balcony'],
+
+    ['canCarry', 'person:player', 'object:crane'],
+    ['canCarry', 'person:player', 'object:key'],
+
+    ['madeOfPaper', 'object:crane'],
+
+    ['adjacentTo', 'scene:atelier', 'scene:balcony'],
+
+    ['hasAdjectiveMeaning', 'word:ka', 'adjective:paper'],
+    ['hasAdjectiveMeaning', 'word:lo', 'adjective:glass'],
+    ['hasAdjectiveMeaning', 'word:beh', 'adjective:burning'],
+
+    ['hasNounMeaning', 'word:ka', 'noun:key'],
+    ['hasNounMeaning', 'word:lo', 'noun:money'],
+    ['hasNounMeaning', 'word:beh', 'noun:bird'],
+
+    ['hasSpokenAsAdjective', 'person:player', 'word:ka'],
+    ['hasSpokenAsNoun', 'person:player', 'word:lo']
   ]
 });
 
+console.log("world", world);
+world.event({
+  relate: [
+    ['hasSpokenAsAdjective', 'person:player', 'word:lo'],
+    ['hasSpokenAsNoun', 'person:player', 'word:ka']
+  ]
+})
 
 function init(window) {
-  console.log("initializing");
   new GameCoordinator({
     window: window,
     world: world,
-    gamePresenter: new GamePresenter(sceneTable)
+    gamePresenter: new GamePresenter(conceptTable)
   }).init();
 }
+
 
 export { init };

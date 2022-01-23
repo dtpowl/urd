@@ -22,12 +22,18 @@ export class Relation {
     for (const entry of this._table.entries()) {
       let subject = entry[0];
       let semanticSet = entry[1];
-      semanticSet.forEach((objects) => {
-        let argumentArray = [subject].concat(objects)
-        newRelation.relate(...argumentArray);
-      });
+      newRelation._table.set(subject, semanticSet.clone());
+
+//      semanticSet.forEach((objects) => {
+//        let argumentArray = [subject].concat(objects)
+//        newRelation.relate(...argumentArray);
+//      });
     }
     return newRelation;
+  }
+
+  subjects() {
+    return new SemanticSet(this._table.keys());
   }
 
   get(subject) {
@@ -44,6 +50,9 @@ export class Relation {
   }
 
   relate(...atoms) {
+    if (this.name == 'madeOfPaper') {
+      console.log("relating", atoms);
+    }
     if (atoms.length != this._arity) {
       throw `Cannot relate; Wrong arity for relation ${this.name}`;
     }
@@ -53,6 +62,10 @@ export class Relation {
   }
 
   unrelate(...atoms) {
+    if (this.name == 'madeOfPaper') {
+      console.log("unrelating", atoms);
+    }
+
     if (atoms.length != this._arity) {
       throw `Cannot unrelate; Wrong arity for relation ${this.name}`;
     }

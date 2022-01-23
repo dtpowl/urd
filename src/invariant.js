@@ -129,3 +129,66 @@ export class Symmetric extends Invariant {
     };
   }
 }
+
+export class Supervenient extends Invariant {
+  // f(x,y) && g(x,z) => g(y,z)
+  constructor(locatedIn, possesses) {
+    super();
+    this._locatedIn = locatedIn;
+    this._possesses = possesses;
+  }
+
+  afterRelate(relation, ...atoms) {
+    let subject = atoms[0];
+    let objects = atoms.slice(1);
+
+    if (relation != this._locatedIn) { return {}; }
+
+    return {
+      relate: this._possesses.relatedObjectsForSubject(subject).map((possessedObjects) => {
+        return [this._locatedIn, possessedObjects.concat(objects)];
+      })
+    };
+  }
+}
+
+export class Converse extends Invariant {
+  constructor(lhs, rhs) {
+    super();
+
+    this._lhs = lhs;
+    this._rhs = rhs;
+  }
+
+  afterRelate(relation, ...atoms) {
+    if (relation == this._lhs) {
+      return {
+        relate: [ [this._rhs, atoms.reverse()] ]
+      }
+    }
+
+    if (relation == this._rhs) {
+      return {
+        relate: [ [this._lhs, atoms.reverse()] ]
+      }
+    }
+
+    return {};
+  }
+
+  afterUnrelate(relation, ...atoms) {
+    if (relation == this._lhs) {
+      return {
+        unrelate: [ [this._rhs, atoms.reverse()] ]
+      }
+    }
+
+    if (relation == this._rhs) {
+      return {
+        unrelate: [ [this._lhs, atoms.reverse()] ]
+      }
+    }
+
+    return {};
+  }
+}

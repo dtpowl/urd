@@ -12,8 +12,8 @@ export class GameCoordinator extends domCoordinator {
         const description = coordinator.gamePresenter.sceneDescription(world);
         const choices = coordinator.gamePresenter.choices(world);
 
-        $('#scene-head').text(title);
-        $('#scene-body').text(description);
+        $('#scene-head').html(title);
+        $('#scene-body').html(description);
         $("#action-list").empty();
         choices.forEach((choice) => {
           let choiceEl = $(`<li><a href="#">${choice[0]}</a></li>`);

@@ -1,12 +1,11 @@
 export class Observer {
-  constructor(relationName, atoms, effect) {
-    this._relationName = relationName;
-    this._atoms = atoms;
+  constructor(query, effect) {
+    this._query = query;
     this._effect = effect;
   }
 
-  check(model) {
-    return model.check(this._relationName, ...this._atoms);
+  examine(model) {
+    return model.query(this._query);
   }
 
   consider(model, oldValue) {
