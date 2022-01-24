@@ -77,6 +77,19 @@ export class SemanticSet {
     return output;
   }
 
+  map(cb) {
+    if (this._inverted) {
+      throw "[TODO] Can't map inverted SemanticSet";
+    }
+
+    let output = new SemanticSet();
+    this.forEach((el) => {
+      output.add(cb(el));
+    });
+
+    return output;
+  }
+
   values() {
     return this._map.values();
   }
@@ -90,6 +103,7 @@ export class SemanticSet {
   }
 
   static defaultHashValueFor(el) {
+    try {
     if (typeof el.map == 'function') {
       return '<' + String(el.map((subEl) => SemanticSet.keyFor(subEl))) + '>';
     }
@@ -103,6 +117,7 @@ export class SemanticSet {
       return SemanticSet.defaultHashValueFor(parts);
     }
 
-    return el;
+      return el;
+    } catch(e) { debugger }
   }
 }

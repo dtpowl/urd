@@ -20,7 +20,9 @@ export class Model {
       this._relations = _relationTable;
     } else {
       this._relations = new Map();
-      relations.forEach((relationTuple) => this._addRelation(...relationTuple));
+      try {
+        relations.forEach((relationTuple) => this._addRelation(...relationTuple));
+      } catch(e) { debugger }
     }
 
     this._derivedRelationsInput = derivedRelations; // this will be used to clone the Model

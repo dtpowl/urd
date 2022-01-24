@@ -1,5 +1,7 @@
+import { SemanticSet } from './semanticSet.js'
+
 export class Observer {
-  constructor(query, effect) {
+  constructor({ query, effect }) {
     this._query = query;
     this._effect = effect;
   }
@@ -9,9 +11,9 @@ export class Observer {
   }
 
   consider(model, oldValue) {
-    let newValue = model.check(this._relationName, ...this._atoms);
-    if (newValue != oldValue) {
-      return this._effect(newValue);
+    let newValue = this.examine(model);
+    if (SemanticSet.keyFor(newValue) != SemanticSet.keyFor(oldValue)) {
+      return this._effect(newValue, oldValue, model);
     } else {
       return null;
     }

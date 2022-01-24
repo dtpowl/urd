@@ -8,7 +8,7 @@ import { Transitor } from '../transitor.js'
 import { Coordinator } from '../coordinator.js'
 
 export class Concept {
-  constructor(name, title, shortDescription, description, {noAutomention}={}) {
+  constructor({name, title, shortDescription, description, noAutomention}={}) {
     this._name = name;
     this._title = title;
     this._shortDescription = shortDescription || this._title;
@@ -37,7 +37,7 @@ export class TakeAction extends Action {
   constructor(subject, object) {
     super({
       relate: [ ['possesses', subject, object] ]
-    })
+    });
     this.subject = subject;
     this.object = object;
   }
@@ -47,8 +47,27 @@ export class DropAction extends Action {
   constructor(subject, object) {
     super({
       unrelate: [ ['possesses', subject, object] ]
-    })
+    });
     this.subject = subject;
     this.object = object;
+  }
+}
+
+export class WriteAction extends Action {
+  constructor(subject, object) {
+    super({
+      relate: [ ['hasWrittenOn', subject, object] ]
+    });
+  }
+}
+
+export class EraseAction extends Action {
+  constructor(subject, object1, object2) {
+    super({
+      unrelate: [
+        ['hasWrittenOnFirst', subject, object1],
+        ['hasWrittenOnSecond', subject, object2]
+      ]
+    });
   }
 }
