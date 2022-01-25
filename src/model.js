@@ -1,5 +1,6 @@
 import { Uid } from './uid.js'
 import { SemanticSet } from './semanticSet.js'
+import { AtomList } from './atomList.js'
 import { Relation } from './relation.js'
 import { Invariant } from './invariant.js'
 import { EventResolutionCycle } from './eventResolutionCycle.js'
@@ -13,7 +14,7 @@ export class Model {
       this._atoms = _atomSet;
     } else {
       this._atoms = new SemanticSet();
-      this._addAtoms(...atoms);
+      this._addAtoms(atoms);
     }
 
     if (_relationTable) {
@@ -74,20 +75,21 @@ export class Model {
     }
 
     // translate statements into trigger format
-    let triggers = {}
+    let triggers = {};
     if (statements.relate) {
       triggers.relate = statements.relate.map((statement) => {
         return [
           this._relations.get(statement[0]),
-          statement.slice(1)
+          AtomList.from(statement[1])
         ];
       });
     }
+
     if (statements.unrelate) {
       triggers.unrelate = statements.unrelate.map((statement) => {
         return [
           this._relations.get(statement[0]),
-          statement.slice(1)
+          AtomList.from(statement[1])
         ];
       });
     }
@@ -95,7 +97,7 @@ export class Model {
     cycle.addTriggers(triggers);
   }
 
-  check(relationName, ...atoms) {
+  check(relationName, atoms) {
     let allAtomsInModel = atoms.reduce((ac, atom) => {
       return ac &&= this._atoms.has(atom);
     }, true);
@@ -105,7 +107,7 @@ export class Model {
 
     let relation = this._relations.get(relationName);
     if (relation) {
-      return relation.check(...atoms);
+      return relation.check(atoms);
     };
 
     let derivedRelationArity = this._derivedRelationArities.get(relationName);
@@ -117,11 +119,9 @@ export class Model {
       throw `wrong arity for relation ${relationName}`;
     }
 
-    let subject = atoms[0];
-    let objects = atoms.slice(1);
-    return new SemanticSet(
-      this.which(relationName, subject)
-    ).has(objects);
+    let subject = atoms.first();
+    let objects = atoms.rest();
+    return this.which(relationName, subject).has(objects);
   }
 
   subjects(relationName) {
@@ -143,12 +143,12 @@ export class Model {
   }
 
   which(relationName, subject) {
-    if (typeof subject == 'object') {
+    if (subject.constructor.name == 'Object') {
       let queryResult = this.query(subject) || [];
       if (typeof queryResult == 'boolean' || queryResult.length > 1) {
         throw "`which` query requires at most one subject atom";
       }
-      return this.which(relationName, queryResult[0]);
+      return this.which(relationName, queryResult);
     }
 
     let relation = this._relations.get(relationName);
@@ -165,23 +165,25 @@ export class Model {
   }
 
   firstWhich(relationName, subject) {
-    return this.which(relationName, subject)[0];
+    return this.which(relationName, subject).take();
   }
 
   not(queryArg) {
     let subqVal = this.query(queryArg);
     if (typeof subqVal == 'boolean') { return !subqVal; }
-    return new SemanticSet(subqVal, {inverted: true})
+    return subqVal.invert(); // SemanticSet
   }
 
   or(queryArg) {
     let subqVals = queryArg.map((subq) => this.query(subq));
     if (subqVals.every((x) => typeof x == 'boolean')) {
-      return subqVals.reduce((x, ac) => ac || x);
+      return new SemanticSet(subqVals.reduce((x, ac) => ac || x));
     } else {
-      return subqVals.
-        filter((x) => typeof x != 'boolean').
-        reduce((x, ac) => IterableArithmetic.union(x, ac));
+      return new SemanticSet(
+        subqVals.
+          filter((x) => typeof x != 'boolean').
+          reduce((x, ac) => IterableArithmetic.union(x, ac))
+      );
     }
   }
 
@@ -195,7 +197,7 @@ export class Model {
     if (iterableSubqVals.length === 0) {
       return booleanReduction;
     } else if (!booleanReduction) {
-      return [];
+      return new SemanticSet();
     } else {
       return iterableSubqVals.reduce((x, ac) => IterableArithmetic.intersect(x, ac));
     }
@@ -247,7 +249,7 @@ export class Model {
     return returnVal;
   }
 
-  _addAtoms(...atoms) {
+  _addAtoms(atoms) {
     atoms.forEach((atom) => this._atoms.add(atom));
   }
 
@@ -262,42 +264,60 @@ export class Model {
     this._invariants.add(invariant);
   }
 
-  _assert(relationName, ...atoms) {
+  _assert(relationName, atoms) {
+    throw 'Unused?'; // todo
+
+    atoms = AtomList.from(atoms);
+
     let relation = this._relations.get(relationName);
     let cycle = new EventResolutionCycle(this);
+
     this._performRelateCycle(relation, cycle, atoms);
   }
 
-  _unrelate(relationName, ...atoms) {
+  _unrelate(relationName, atoms) {
+    atoms = AtomList.from(atoms);
+
     let relation = this._relations.get(relationName);
     let cycle = new EventResolutionCycle(this);
     this._performUnrelateCycle(relation, cycle, atoms);
   }
 
   _performRelateCycle(relation, cycle, atoms) {
+    atoms = AtomList.from(atoms);
+
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.beforeRelate(relation, ...atoms);
+      let triggers = invariant.beforeRelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
 
-    relation.relate(...atoms);
+    console.log("relation", relation);
+    console.log("atoms a", atoms);
+    relation.relate(atoms);
+    console.log("atoms b", atoms);
+    console.log("--------")
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.afterRelate(relation, ...atoms);
+      console.log("relation...", relation);
+      console.log("atoms...", atoms);
+
+      let triggers = invariant.afterRelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
   }
 
   _performUnrelateCycle(relation, cycle, atoms) {
+    atoms = AtomList.from(atoms);
+
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.beforeUnrelate(relation, ...atoms);
+      let triggers = invariant.beforeUnrelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
 
-    relation.unrelate(...atoms);
+    relation.unrelate(atoms);
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.afterUnrelate(relation, ...atoms);
+      let triggers = invariant.afterUnrelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
   }

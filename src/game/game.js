@@ -1,3 +1,4 @@
+import { AtomList } from '../atomList.js';
 import { Model } from '../model.js';
 import { Relation } from '../relation.js';
 import { Unique, Symmetric } from '../invariant.js';
@@ -26,7 +27,7 @@ export class Concept {
 export class MoveAction extends Action {
   constructor(subject, destination) {
     super({
-      relate: [ ['locatedIn', subject, destination ] ]
+      relate: [ ['locatedIn', new AtomList(subject, destination)] ]
     });
     this.subject = subject;
     this.destination = destination;
@@ -36,7 +37,7 @@ export class MoveAction extends Action {
 export class TakeAction extends Action {
   constructor(subject, object) {
     super({
-      relate: [ ['possesses', subject, object] ]
+      relate: [ ['possesses', new AtomList(subject, object)] ]
     });
     this.subject = subject;
     this.object = object;
@@ -46,7 +47,7 @@ export class TakeAction extends Action {
 export class DropAction extends Action {
   constructor(subject, object) {
     super({
-      unrelate: [ ['possesses', subject, object] ]
+      unrelate: [ ['possesses', new AtomList(subject, object)] ]
     });
     this.subject = subject;
     this.object = object;
@@ -56,7 +57,7 @@ export class DropAction extends Action {
 export class WriteAction extends Action {
   constructor(subject, object) {
     super({
-      relate: [ ['hasWrittenOn', subject, object] ]
+      relate: [ ['hasWrittenOn', new AtomList(subject, object)] ]
     });
   }
 }
@@ -65,8 +66,8 @@ export class EraseAction extends Action {
   constructor(subject, object1, object2) {
     super({
       unrelate: [
-        ['hasWrittenOnFirst', subject, object1],
-        ['hasWrittenOnSecond', subject, object2]
+        ['hasWrittenOnFirst', new AtomList(subject, object1)],
+        ['hasWrittenOnSecond', new AtomList(subject, object2)]
       ]
     });
   }

@@ -1,8 +1,10 @@
+import { AtomList } from './atomList.js'
+
 export class Invariant {
-  beforeRelate(...args) { return {} }
-  beforeUnrelate(...args) { return {} }
-  afterRelate(...args) { return {} }
-  afterUnrelate(...args) { return {} }
+  beforeRelate() { return {} }
+  beforeUnrelate() { return {} }
+  afterRelate() { return {} }
+  afterUnrelate() { return {} }
 }
 
 export class Inverse extends Invariant {
@@ -17,7 +19,7 @@ export class Inverse extends Invariant {
     this._rhs = rhs;
   }
 
-  afterRelate(relation, ...atoms) {
+  afterRelate(relation, atoms) {
     if (relation == this._lhs) {
       return {
         unrelate: [ [this._rhs, atoms] ]
@@ -33,7 +35,7 @@ export class Inverse extends Invariant {
     return {};
   }
 
-  afterUnrelate(relation, ...atoms) {
+  afterUnrelate(relation, atoms) {
     if (relation == this._lhs) {
       return {
         relate: [ [this._rhs, atoms] ]
@@ -62,7 +64,7 @@ export class Mutex extends Invariant {
     this._rhs = rhs;
   }
 
-  afterRelate(relation, ...atoms) {
+  afterRelate(relation, atoms) {
     if (relation == this._lhs) {
       return {
         unrelate: [ [this._rhs, atoms] ]
@@ -85,17 +87,17 @@ export class Unique extends Invariant {
     this._relation = relation;
   }
 
-  beforeRelate(relation, ...atoms) {
+  beforeRelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms[0];
-    let objectAtoms = atoms.slice(1);
-    let existingSaturations = relation.get(subject);
+    let subject = atoms.first();
+    let objectAtoms = atoms.rest();
+    let existingSaturations = relation.relatedObjectsForSubject(subject);
     let output = {
       unrelate: []
     };
     existingSaturations.forEach((existingObjectAtoms) => {
-      if (!objectAtoms.every((el, i) => el == existingObjectAtoms[i])) {
+      if (!objectAtoms.identical(existingObjectAtoms)) {
         output.unrelate.push([this._relation, [subject].concat(existingObjectAtoms)])
       }
     });
@@ -109,21 +111,21 @@ export class Symmetric extends Invariant {
     this._relation = relation;
   }
 
-  afterRelate(relation, ...atoms) {
+  afterRelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms[0];
-    let object = atoms[1];
+    let subject = atoms.first();
+    let object = atoms.rest()
     return {
       relate: [ [this._relation, [object, subject]] ]
     };
   }
 
-  afterUnrelate(relation, ...atoms) {
+  afterUnrelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms[0];
-    let object = atoms[1];
+    let subject = atoms.first();
+    let object = atoms.rest();
     return {
       unrelate: [ [this._relation, [object, subject]] ]
     };
@@ -138,15 +140,15 @@ export class Supervenient extends Invariant {
     this._possesses = possesses;
   }
 
-  afterRelate(relation, ...atoms) {
-    let subject = atoms[0];
-    let objects = atoms.slice(1);
+  afterRelate(relation, atoms) {
+    let subject = atoms.first();
+    let objects = atoms.rest();
 
     if (relation != this._locatedIn) { return {}; }
 
     return {
-      relate: this._possesses.relatedObjectsForSubject(subject).map((possessedObjects) => {
-        return [this._locatedIn, possessedObjects.concat(objects)];
+      relate: this._possesses.relatedObjectsForSubject(subject).arrayMap((possessedItems) => {
+        return [this._locatedIn, new AtomList(possessedItems, objects)];
       })
     };
   }
@@ -160,7 +162,9 @@ export class Converse extends Invariant {
     this._rhs = rhs;
   }
 
-  afterRelate(relation, ...atoms) {
+  afterRelate(relation, atoms) {
+    atoms = AtomList.from(atoms);
+
     if (relation == this._lhs) {
       return {
         relate: [ [this._rhs, atoms.reverse()] ]
@@ -176,7 +180,9 @@ export class Converse extends Invariant {
     return {};
   }
 
-  afterUnrelate(relation, ...atoms) {
+  afterUnrelate(relation, atoms) {
+    atoms = AtomList.from(atoms);
+
     if (relation == this._lhs) {
       return {
         unrelate: [ [this._rhs, atoms.reverse()] ]

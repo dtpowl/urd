@@ -41,7 +41,6 @@ export class GamePresenter {
     this._conceptTable = conceptTable;
   }
 
-
   renderConceptProperty(conceptName, property, world) {
     let concept = this._conceptTable.get(conceptName);
     let prop = concept[property];
@@ -53,17 +52,15 @@ export class GamePresenter {
   }
 
   sceneTitle(world) {
-    let sceneAtom = world.which('locatedIn', 'person:player')[0][0];
+    let sceneAtom = world.firstWhich('locatedIn', 'person:player');
     return this._conceptTable.get(sceneAtom).title;
   }
 
   sceneDescription(world) {
-    let sceneAtom = world.which('locatedIn', 'person:player')[0][0];
+    let sceneAtom = world.firstWhich('locatedIn', 'person:player');
     let sceneDesc = this.renderConceptProperty(sceneAtom, 'description', world);
 
     let takeable = world.which('canTake', 'person:player').
-        map((x) => x[0]).
-        sort((x) => x).
         filter((x) => {
           return this._conceptTable.get(x).automention;
         });
@@ -79,8 +76,8 @@ export class GamePresenter {
   }
 
   moveChoices(world) {
-    let destinationAtoms = world.flatWhich('canGoTo', 'person:player');
-    return destinationAtoms.map((destinationAtom) => {
+    let destinationAtoms = world.which('canGoTo', 'person:player');
+    return destinationAtoms.arrayMap((destinationAtom) => {
       let destinationShort = this.renderConceptProperty(destinationAtom, 'shortDescription', world);
       return [
         `Go to ${destinationShort}`,
@@ -90,8 +87,8 @@ export class GamePresenter {
   }
 
   takeChoices(world) {
-    let takeable = world.flatWhich('canTake', 'person:player');
-    return takeable.map((takeableAtom) => {
+    let takeable = world.which('canTake', 'person:player');
+    return takeable.arrayMap((takeableAtom) => {
       let takeableTitle = this.renderConceptProperty(takeableAtom, 'title', world);
       return [
         `Take ${takeableTitle}`,
@@ -101,9 +98,8 @@ export class GamePresenter {
   }
 
   dropChoices(world) {
-    let heldObjects = world.flatWhich('possesses', 'person:player');
-    return heldObjects.
-      map((heldAtom) => {
+    let heldObjects = world.which('possesses', 'person:player');
+    return heldObjects.arrayMap((heldAtom) => {
         let heldTitle = this.renderConceptProperty(heldAtom, 'title', world);
         return [
           `Drop ${heldTitle}`,
@@ -113,10 +109,10 @@ export class GamePresenter {
   }
 
   writeChoices(world) {
-    let knownWords = world.flatWhich('knowsWord', 'person:player');
-    let writeableThings = world.flatWhich('canWriteOn', 'person:player');
+    let knownWords = world.which('knowsWord', 'person:player');
+    let writeableThings = world.which('canWriteOn', 'person:player');
 
-    return writeableThings.map((thing) => {
+    return writeableThings.arrayMap((thing) => {
       let action;
       let thingTitle = this.renderConceptProperty(thing, 'title', world);
       action = new SpeakAdjectiveAction('person:player', thing);
@@ -126,8 +122,8 @@ export class GamePresenter {
   }
 
   eraseChoices(world) {
-    let writeableThings = world.flatWhich('canWriteOn', 'person:player');
-    return writeableThings.map((thing) => {
+    let writeableThings = world.which('canWriteOn', 'person:player');
+    return writeableThings.arrayMap((thing) => {
       let thingTitle = this.renderConceptProperty(thing, 'title', world);
       let firstWord = world.firstWhich('hasWrittenOnFirst', 'object:pg')[0];
       let secondWord = world.firstWhich('hasWrittenOnSecond', 'object:pg')[0];
@@ -142,8 +138,8 @@ export class GamePresenter {
   choices(world) {
     return this.moveChoices(world).
       concat(this.takeChoices(world)).
-      concat(this.dropChoices(world)).
-      concat(this.eraseChoices(world))
+      concat(this.dropChoices(world));
+//      concat(this.eraseChoices(world))
   }
 
   _cached(world, key, cb) {

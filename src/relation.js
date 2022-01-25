@@ -1,5 +1,6 @@
 import { Uid } from './uid.js'
 import { SemanticSet } from './semanticSet.js'
+import { AtomList } from './atomList.js'
 
 export class Relation {
   constructor(name, arity, defaultValue=false, _table=null) {
@@ -29,10 +30,15 @@ export class Relation {
   }
 
   subjects() {
-    return new SemanticSet(this._table.keys()).map((k) => [k]);
+    // todo: if we tracked subjects in a multiset, we wouldn't need to recalc this every time
+    let asAtomLists = new SemanticSet();
+    for (const k of this._table.keys()) {
+      asAtomLists.add(new AtomList(k));
+    }
+    return asAtomLists;
   }
 
-  get(subject) {
+  _get(subject) {
     let tableValue = this._table.get(subject);
     if (!tableValue) {
       tableValue = new SemanticSet();
@@ -41,34 +47,41 @@ export class Relation {
     return tableValue;
   }
 
+  // todo: when converting to TypeScript, require args for all of these methods to be AtomLists
   relatedObjectsForSubject(subject) {
-    return Array.from(this.get(subject).values());
+    try {
+      subject = AtomList.from(subject);
+    } catch(e) { debugger }
+    return new SemanticSet(this._get(subject.semanticHashValue()).values());
   }
 
-  relate(...atoms) {
+  relate(atoms) {
+    atoms = AtomList.from(atoms);
     if (atoms.length != this._arity) {
       throw `Cannot relate; Wrong arity for relation ${this.name}`;
     }
-    const subject = atoms[0];
-    const objects = atoms.splice(1);
-    this.get(subject).add(objects);
+    const subject = atoms.first();
+    const objects = atoms.rest();
+    this._get(subject.semanticHashValue()).add(objects);
   }
 
-  unrelate(...atoms) {
+  unrelate(atoms) {
+    atoms = AtomList.from(atoms);
     if (atoms.length != this._arity) {
       throw `Cannot unrelate; Wrong arity for relation ${this.name}`;
     }
-    const subject = atoms[0];
-    const objects = atoms.splice(1);
-    this.get(subject).delete(objects);
+    const subject = atoms.first();
+    const objects = atoms.rest();
+    this._get(subject.semanticHashValue()).delete(objects);
   }
 
-  check(...atoms) {
+  check(atoms) {
+    atoms = AtomList.from(atoms);
     if (atoms.length != this._arity) {
       throw `Cannot check; Wrong arity for relation ${this.name}`;
     }
-    const subject = atoms[0];
-    const objects = atoms.splice(1);
-    return this.get(subject).has(objects);
+    const subject = atoms.first();
+    const objects = atoms.rest();
+    return this._get(subject.semanticHashValue()).has(objects);
   }
 }

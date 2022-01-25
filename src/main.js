@@ -6,18 +6,27 @@ import {
 import { Observer } from './observer.js'
 import { IterableArithmetic } from './iterableArithmetic.js'
 import { SemanticSet } from './semanticSet.js'
+import { SemanticMap } from './semanticMap.js'
 
 import { GameCoordinator } from './game/gameCoordinator.js'
 import { GamePresenter } from './game/gamePresenter.js'
 
 import { Concept } from './game/game.js'
+import { AtomList } from './atomList.js'
 
-let conceptTable = new Map();
+import { Relation } from './relation.js'
+
+let conceptTable = new SemanticMap();
 ([
   new Concept({
     name: 'person:player',
     title: 'you',
     noAutomention: true
+  }),
+  new Concept({
+    name: 'object:knife',
+    title: 'the silver knife',
+    shortDescription: 'a silver knife'
   }),
   new Concept({
     name: 'scene:atelier',
@@ -83,11 +92,10 @@ let conceptTable = new Map();
   }),
 
 ]).forEach((s) => {
-  conceptTable.set(s.name, s);
+  conceptTable.set(new AtomList(s.name), s);
 });
 
-
-let atoms = Array.from(conceptTable.keys());
+let atoms = Array.from(conceptTable.mapValues((v) => v.name));
 let relations = [
   // movement and place
   ['locatedIn', 2],
@@ -217,9 +225,9 @@ let pgraphObserver = new Observer({
       events = [
         {
           relate: [
-            ['hasAdjectiveProperty', objectAtom, adjective],
-            ['hasNounProperty', objectAtom, noun],
-            ['locatedIn', objectAtom, pgLocation]
+            ['hasAdjectiveProperty', [objectAtom, adjective]],
+            ['hasNounProperty', [objectAtom, noun]],
+            ['locatedIn', [objectAtom, pgLocation]]
           ]
         }
       ]
@@ -227,12 +235,12 @@ let pgraphObserver = new Observer({
       let possessedBy = model.firstWhich('possessedBy', objectAtom);
       let locatedIn = model.firstWhich('locatedIn', objectAtom);
       let unrelates = [];
-      debugger
+
       if (possessedBy) {
-        unrelates.push(['possessedBy', objectAtom, possessedBy[0]]);
+        unrelates.push(['possessedBy', [objectAtom, possessedBy[0]]]);
       }
       if (locatedIn) {
-        unrelates.push(['locatedIn', objectAtom, locatedIn[0]]);
+        unrelates.push(['locatedIn', [objectAtom, locatedIn[0]]]);
       }
 
       events = [{
@@ -244,6 +252,7 @@ let pgraphObserver = new Observer({
   }
 });
 
+
 let world = new World({
   atoms: atoms,
   relations: relations,
@@ -253,32 +262,35 @@ let world = new World({
   transitors: [],
   init: {
     relate: [
-      ['locatedIn', 'person:player', 'scene:atelier'],
-      ['locatedIn', 'object:pg', 'scene:atelier'],
+      ['locatedIn', ['person:player', 'scene:atelier']],
+      ['locatedIn', ['object:pg', 'scene:atelier']],
+      ['locatedIn', ['object:knife', 'scene:atelier']],
 
-      ['canCarry', 'person:player', 'object:mut-1'],
+      ['canCarry', ['person:player', 'object:mut-1']],
+      ['canCarry', ['person:player', 'object:knife']],
 
-      ['isPgraph', 'object:pg'],
+      ['isPgraph', ['object:pg']],
 
-      ['adjacentTo', 'scene:atelier', 'scene:balcony'],
+      ['adjacentTo', ['scene:atelier', 'scene:balcony']],
 
-      ['hasAdjectiveMeaning', 'word:ka', 'adjective:paper'],
-      ['hasAdjectiveMeaning', 'word:lo', 'adjective:glass'],
-      ['hasAdjectiveMeaning', 'word:beh', 'adjective:burning'],
+      ['hasAdjectiveMeaning', ['word:ka', 'adjective:paper']],
+      ['hasAdjectiveMeaning', ['word:lo', 'adjective:glass']],
+      ['hasAdjectiveMeaning', ['word:beh', 'adjective:burning']],
 
-      ['hasNounMeaning', 'word:ka', 'noun:key'],
-      ['hasNounMeaning', 'word:lo', 'noun:money'],
-      ['hasNounMeaning', 'word:beh', 'noun:bird'],
+      ['hasNounMeaning', ['word:ka', 'noun:key']],
+      ['hasNounMeaning', ['word:lo', 'noun:money']],
+      ['hasNounMeaning', ['word:beh', 'noun:bird']],
 
-      ['knowsWord', 'person:player', 'word:ka'],
-      ['knowsWord', 'person:player', 'word:lo'],
+      ['knowsWord', ['person:player', 'word:ka']],
+      ['knowsWord', ['person:player', 'word:lo']],
     ]
   }
 });
+
 world = world.event({
   relate: [
-    ['isWrittenFirstOn', 'word:beh', 'object:pg'],
-    ['isWrittenSecondOn', 'word:ka', 'object:pg']
+    ['isWrittenFirstOn', ['word:beh', 'object:pg']],
+    ['isWrittenSecondOn', ['word:ka', 'object:pg']]
   ]
 });
 console.log("w", world);

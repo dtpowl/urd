@@ -1,29 +1,40 @@
+// A set that respects semantic equality of reference type instances,
+// and which also adds some other useful features.
+
 // This is needed because:
 //
-// 1.) `Set.has` doesn't return true
-//      when the argument is a reference type that evaluates
-//      as equal to an element of the Set
+// 1.) `AtomList` and other classes have a natural equivalence relation
 //
 // 2.) `Set` doesn't implement `forEach`
 //
-// 3.) `Set` deosn't implement `filter`
+// 3.) `Set` doesn't implement `filter`
 //
 // 4.) It's not possible to take the complement of a `Set`
 //
 // 5.) It's not possible to clone a `Set`
 
 export class SemanticSet {
-  constructor (iterable, {inverted}={})  {
-    this._map = new Map();
+  static isSemanticSet(arg) {
+    return arg.constructor == this;
+  }
+
+  constructor (iterable, {inverted, _map}={})  {
+    this._map = _map || new Map();
 
     // add the elements before setting the inverted flag
     if (iterable) {
-      for (const el of iterable) {
-        this.add(el);
-      }
+      try {
+        for (const el of iterable) {
+          this.add(el);
+        }
+      } catch(e) { debugger }
     }
 
     this._inverted = Boolean(inverted);
+  }
+
+  invert() {
+    return new SemanticSet(this._map.values(), {inverted: !this._inverted});
   }
 
   clone() {
@@ -53,6 +64,14 @@ export class SemanticSet {
     } else {
       return this._map.has(SemanticSet.keyFor(el));
     }
+  }
+
+  every(cb) {
+    return Array.from(this.map.values()).every(cb);
+  }
+
+  some(cb) {
+    return Array.from(this.map.values()).some(cb);
   }
 
   forEach(cb) {
@@ -90,8 +109,25 @@ export class SemanticSet {
     return output;
   }
 
+  arrayMap(cb) {
+    if (this._inverted) {
+      throw "[TODO] Can't map inverted SemanticSet";
+    }
+
+    let output = [];
+    this.forEach((el) => {
+      output.push(cb(el));
+    });
+
+    return output;
+  }
+
   values() {
     return this._map.values();
+  }
+
+  take() {
+    return this.values().next().value;
   }
 
   static keyFor(el) {

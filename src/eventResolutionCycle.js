@@ -41,6 +41,7 @@ export class EventResolutionCycle {
     relateTriggers.forEach((trigger) => {
       if (!this._relateTriggers.has(trigger)) {
         this._relateTriggers.add(trigger);
+
         this._model._performRelateCycle(trigger[0], this, trigger[1]);
       }
     });

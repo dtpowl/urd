@@ -71,9 +71,9 @@ export class World {
     }
   }
 
-  check(relationName, ...atoms) {
+  check(relationName, atoms) {
     this._prepareModel();
-    return this._model.check(relationName, ...atoms);
+    return this._model.check(relationName, atoms);
   }
 
   which(relationName, subject) {
@@ -84,12 +84,6 @@ export class World {
   firstWhich(relationName, subject) {
     this._prepareModel();
     return this._model.firstWhich(relationName, subject);
-  }
-
-  // this is just a convenience method, sometimes useful when writing presenters
-  flatWhich(relationName, subject) {
-    this._prepareModel();
-    return this._model.which(relationName, subject).flat();
   }
 
   subjects(relationName, subject) {
