@@ -15,10 +15,12 @@ export class GameCoordinator extends domCoordinator {
         $('#scene-head').html(title);
         $('#scene-body').html(description);
         $("#action-list").empty();
+
         choices.forEach((choice) => {
-          let choiceEl = $(`<li><a href="#">${choice[0]}</a></li>`);
+          const choiceText = coordinator.gamePresenter.renderActionProperty(choice, 'tag', world);
+          const choiceEl = $(`<li><a href="#">${choiceText}</a></li>`);
           choiceEl.click((e) => {
-            coordinator.input(choice[1]);
+            coordinator.input(choice);
             e.preventDefault();
           });
           $("#action-list").append(choiceEl);

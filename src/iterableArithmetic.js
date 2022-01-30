@@ -40,9 +40,9 @@ export class IterableArithmetic {
   static union(lhs, rhs) {
     var set;
     if (rhs.constructor.name == 'SemanticSet') {
-      set = lhs;
+      set = rhs;
     } else {
-      set = new SemanticSet(lhs);
+      set = new SemanticSet(rhs);
     }
 
     let output = Array.from(lhs);

@@ -12,7 +12,7 @@ export class Observer {
 
   consider(model, oldValue) {
     let newValue = this.examine(model);
-    if (SemanticSet.keyFor(newValue) != SemanticSet.keyFor(oldValue)) {
+    if (!newValue.identical(oldValue)) {
       return this._effect(newValue, oldValue, model);
     } else {
       return null;

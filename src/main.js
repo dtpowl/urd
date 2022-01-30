@@ -8,95 +8,109 @@ import { IterableArithmetic } from './iterableArithmetic.js'
 import { SemanticSet } from './semanticSet.js'
 import { SemanticMap } from './semanticMap.js'
 
-import { GameCoordinator } from './game/gameCoordinator.js'
-import { GamePresenter } from './game/gamePresenter.js'
-
-import { Concept } from './game/game.js'
 import { AtomList } from './atomList.js'
-
 import { Relation } from './relation.js'
 
-let conceptTable = new SemanticMap();
+import { template } from './presentable.js'
+import { Concept } from './concept.js'
+
+import { GameCoordinator } from './demo/gameCoordinator.js'
+import { GamePresenter } from './demo/gamePresenter.js'
+
+//
+
+const conceptTable = new SemanticMap();
+const mutObjectNames = {
+  [SemanticSet.keyFor(new AtomList('adjective:paper', 'noun:money'))]: 'dollar bill',
+  [SemanticSet.keyFor(new AtomList('adjective:paper', 'noun:bird'))]: 'origami crane',
+
+  [SemanticSet.keyFor(new AtomList('adjective:glass', 'noun:key'))]: 'glass key',
+  [SemanticSet.keyFor(new AtomList('adjective:glass', 'noun:bird'))]: 'porcelain dove',
+
+  [SemanticSet.keyFor(new AtomList('adjective:metal', 'noun:money'))]: 'golden coin',
+  [SemanticSet.keyFor(new AtomList('adjective:metal', 'noun:key'))]: 'brass key'
+};
 ([
-  new Concept({
-    name: 'person:player',
-    title: 'you',
-    noAutomention: true
+  new Concept('person:player', {
+    title: 'you'
   }),
-  new Concept({
-    name: 'object:knife',
-    title: 'the silver knife',
+  new Concept('object:knife', {
+    title: 'silver knife',
     shortDescription: 'a silver knife'
   }),
-  new Concept({
-    name: 'scene:atelier',
-    title: 'The Atelier',
-    shortDescription: 'the atelier',
-    description: 'You are in your studio. In the center of the room rests your trusty poesiograph. To the north, a pair of French doors open onto a balcony.'
+  new Concept('scene:studio', {
+    title: 'The Studio',
+    shortDescription: 'the studio',
+    description: 'You are in your studio. In the center of the room rests your trusty poesiograph.'
   }),
-  new Concept({
-    name: 'scene:balcony',
+  new Concept('scene:balcony', {
     title: 'On the Balcony',
     shortDescription: 'the balcony',
     description: 'You stand on a balcony overlooking the city.'
   }),
-  new Concept({
-    name: 'object:pg',
+  new Concept('object:pg', {
     title: 'your poesiograph',
     shortDescription: 'a poesiograph',
     description: 'An elaborate device surmounted by a writing slate.',
-    noAutomention: true
   }),
+  new Concept('object:trunk', {
 
-  new Concept({
-    name: 'object:mut-1',
-    title: (model) => {
-      let adjective = model.firstWhich('hasAdjectiveProperty', 'object:mut-1')[0];
-      let noun = model.firstWhich('hasNounProperty', 'object:mut-1')[0];
+  }),
+  new Concept('object:mut-1', {
+    adjective: (query, conceptTable) => {
+      const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
+      return conceptTable.get(adjConcept).title();
+    },
+    noun: (query, conceptTable) => {
+      const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
+      return conceptTable.get(nounConcept).title();
+    },
 
-      return `a ${adjective.split(':')[1]} ${noun.split(':')[1]}`
+    title: (query, conceptTable) => {
+      const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
+      const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
+      const key = new AtomList(adjConcept, nounConcept);
+      return mutObjectNames[SemanticSet.keyFor(key)];
     },
   }),
 
-  new Concept({
-    name: 'word:ka',
+  new Concept('word:ka', {
     title: 'the word ka'
   }),
-  new Concept({
-    name: 'adjective:paper'
+  new Concept('adjective:paper', {
+    title: 'paper'
   }),
-  new Concept({
-    name: 'noun:key'
+  new Concept('noun:key', {
+    title: 'key'
   }),
 
-  new Concept({
-    name: 'word:lo',
+  new Concept('word:lo', {
     title: 'the word lo'
   }),
-  new Concept({
-    name: 'adjective:glass'
+  new Concept('adjective:glass', {
+    title: 'glass'
   }),
-  new Concept({
-    name: 'noun:coin'
+  new Concept('noun:money', {
+    title: 'coin'
   }),
 
-  new Concept({
-    name: 'word:beh',
+  new Concept('word:beh', {
     title: 'the word beh'
   }),
-  new Concept({
-    name: 'adjective:burning'
+  new Concept('adjective:metal', {
+    title: 'metal'
   }),
-  new Concept({
-    name: 'noun:bird'
+  new Concept('noun:bird', {
+    title: 'bird'
   }),
 
 ]).forEach((s) => {
-  conceptTable.set(new AtomList(s.name), s);
+  conceptTable.set(new AtomList(s.atom), s);
 });
 
-let atoms = Array.from(conceptTable.mapValues((v) => v.name));
-let relations = [
+
+const atoms = Array.from(conceptTable.mapValues((v) => v.atom));
+const relations = [
   // movement and place
   ['locatedIn', 2],
   ['locusOf', 2],
@@ -153,29 +167,29 @@ let derivedRelations = [
     }
   ],
   [
-    'canTake', 2, (taker) => {
+    'canGoTo', 2, (subject) => {
+      return { which: [ 'adjacentTo', { firstWhich: ['locatedIn', subject] } ] }
+    }
+  ],
+  [
+    'canTake', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', taker] },
-          { which: [ 'canCarry', taker ] },
-          { not: { which: [ 'possesses', taker ] } }
+          { which: ['isNear', subject] },
+          { which: [ 'canCarry', subject ] },
+          { not: { which: [ 'possesses', subject ] } }
         ]
       }
     }
   ],
   [
-    'canWriteOn', 2, (writer) => {
+    'canWriteOn', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', 'person:player'] },
+          { which: ['isNear', subject] },
           { subjects: 'isPgraph' }
         ]
       }
-    }
-  ],
-  [
-    'canGoTo', 2, (goer) => {
-      return { which: [ 'adjacentTo', { firstWhich: ['locatedIn', goer] } ] }
     }
   ],
   [
@@ -202,22 +216,21 @@ let derivedRelations = [
 
 let pgraphObserver = new Observer({
   query: {
-    which: [ 'hasWrittenOn', 'object:pg' ]
+    or: [
+      { propositions: 'hasWrittenOnFirst' },
+      { propositions: 'hasWrittenOnSecond' },
+    ]
   },
   effect: (newValue, oldValue, model) => {
-    let adjectiveWord = model.firstWhich('hasWrittenOnFirst', 'object:pg');
-    let adjective;
-    if (adjectiveWord) {
-      adjective = model.firstWhich('hasAdjectiveMeaning', adjectiveWord[0])[0];
-    }
+    let noun = model.firstWhich(
+      'hasNounMeaning', { firstWhich: [ 'hasWrittenOnSecond', 'object:pg' ] }
+    );
 
-    let nounWord = model.firstWhich('hasWrittenOnSecond', 'object:pg');
-    let noun;
-    if (nounWord) {
-      noun = model.firstWhich('hasNounMeaning', nounWord[0])[0];
-    }
+    let adjective = model.firstWhich(
+      'hasAdjectiveMeaning', { firstWhich: [ 'hasWrittenOnFirst', 'object:pg' ] }
+    );
 
-    let pgLocation = model.firstWhich('locatedIn', 'object:pg')[0];
+    let pgLocation = model.firstWhich('locatedIn', 'object:pg');
     let objectAtom = 'object:mut-1';
 
     let events;
@@ -237,10 +250,10 @@ let pgraphObserver = new Observer({
       let unrelates = [];
 
       if (possessedBy) {
-        unrelates.push(['possessedBy', [objectAtom, possessedBy[0]]]);
+        unrelates.push(['possessedBy', [objectAtom, possessedBy]]);
       }
       if (locatedIn) {
-        unrelates.push(['locatedIn', [objectAtom, locatedIn[0]]]);
+        unrelates.push(['locatedIn', [objectAtom, locatedIn]]);
       }
 
       events = [{
@@ -252,30 +265,32 @@ let pgraphObserver = new Observer({
   }
 });
 
-
 let world = new World({
   atoms: atoms,
   relations: relations,
   derivedRelations: derivedRelations,
   invariants: invariants,
-  observers: [pgraphObserver],
+  observers: [
+    pgraphObserver
+  ],
   transitors: [],
   init: {
     relate: [
-      ['locatedIn', ['person:player', 'scene:atelier']],
-      ['locatedIn', ['object:pg', 'scene:atelier']],
-      ['locatedIn', ['object:knife', 'scene:atelier']],
+      ['locatedIn', ['person:player', 'scene:studio']],
+      ['locatedIn', ['object:pg', 'scene:studio']],
+      ['locatedIn', ['object:knife', 'scene:studio']],
+      ['locatedIn', ['object:mut-1', 'scene:balcony']],
 
       ['canCarry', ['person:player', 'object:mut-1']],
       ['canCarry', ['person:player', 'object:knife']],
 
       ['isPgraph', ['object:pg']],
 
-      ['adjacentTo', ['scene:atelier', 'scene:balcony']],
+      ['adjacentTo', ['scene:studio', 'scene:balcony']],
 
       ['hasAdjectiveMeaning', ['word:ka', 'adjective:paper']],
       ['hasAdjectiveMeaning', ['word:lo', 'adjective:glass']],
-      ['hasAdjectiveMeaning', ['word:beh', 'adjective:burning']],
+      ['hasAdjectiveMeaning', ['word:beh', 'adjective:metal']],
 
       ['hasNounMeaning', ['word:ka', 'noun:key']],
       ['hasNounMeaning', ['word:lo', 'noun:money']],
@@ -283,6 +298,7 @@ let world = new World({
 
       ['knowsWord', ['person:player', 'word:ka']],
       ['knowsWord', ['person:player', 'word:lo']],
+      ['knowsWord', ['person:player', 'word:beh']],
     ]
   }
 });
@@ -293,7 +309,6 @@ world = world.event({
     ['isWrittenSecondOn', ['word:ka', 'object:pg']]
   ]
 });
-console.log("w", world);
 
 function init(window) {
   new GameCoordinator({
@@ -302,6 +317,5 @@ function init(window) {
     gamePresenter: new GamePresenter(conceptTable)
   }).init();
 }
-
 
 export { init };

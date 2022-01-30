@@ -96,6 +96,10 @@ export class World {
     return this._model.query(arguments[0]);
   }
 
+  queryFn() {
+    return this.query.bind(this);
+  }
+
   _prepareModel() {
     if (!this._model) {
       this._model = this._parent._model;
@@ -123,6 +127,7 @@ export class World {
       let observerOldValues = this._observers.map((o) => o.examine(this._model));
 
       this._model.assert(event);
+
       let observerEffects = this._observers.map((o, i) => {
         let effect = o.consider(this._model, observerOldValues[i]);
         if (effect && triggeredObservers.has(o)) {

@@ -4,7 +4,6 @@ import { AtomList } from './atomList.js'
 import { Relation } from './relation.js'
 import { Invariant } from './invariant.js'
 import { EventResolutionCycle } from './eventResolutionCycle.js'
-import { IterableArithmetic } from './iterableArithmetic.js'
 
 export class Model {
   constructor({ atoms, relations, derivedRelations, invariants, _relationTable, _atomSet }) {
@@ -21,9 +20,7 @@ export class Model {
       this._relations = _relationTable;
     } else {
       this._relations = new Map();
-      try {
-        relations.forEach((relationTuple) => this._addRelation(...relationTuple));
-      } catch(e) { debugger }
+      relations.forEach((relationTuple) => this._addRelation(...relationTuple));
     }
 
     this._derivedRelationsInput = derivedRelations; // this will be used to clone the Model
@@ -142,6 +139,34 @@ export class Model {
     throw `unknown relation ${relationName}`;
   }
 
+  propositions(relationName) {
+    let relation = this._relations.get(relationName);
+    if (relation) {
+      return relation.propositions();
+    }
+
+    // for derived relations, there's no speedy way to look up subjects. we just have to exhaust
+    // todo: think about this
+    let derivedRelationQueryMaker = this._derivedRelationQueryMakers.get(relationName);
+    if (derivedRelationQueryMaker) {
+      return new SemanticSet(
+        this._atoms.arrayMap((atom) => {
+          return this.query(derivedRelationQueryMaker(atom)).arrayMap((objectVals) => {
+            return objectVals.map((objects) => {
+              if (objects.length > 0) {
+                return new AtomList(relationName, atom, objects);
+              } else {
+                return null;
+              }
+            });
+        }).flat().filter((x) => Boolean(x));
+        }).flat()
+      );
+    }
+
+    throw `unknown relation ${relationName}`;
+  }
+
   which(relationName, subject) {
     if (subject.constructor.name == 'Object') {
       let queryResult = this.query(subject) || [];
@@ -182,7 +207,7 @@ export class Model {
       return new SemanticSet(
         subqVals.
           filter((x) => typeof x != 'boolean').
-          reduce((x, ac) => IterableArithmetic.union(x, ac))
+          reduce((x, ac) => ac.union(x))
       );
     }
   }
@@ -199,15 +224,14 @@ export class Model {
     } else if (!booleanReduction) {
       return new SemanticSet();
     } else {
-      return iterableSubqVals.reduce((x, ac) => IterableArithmetic.intersect(x, ac));
+      return iterableSubqVals.reduce((x, ac) => ac.intersection(x));
     }
   }
 
-  // todo: this returns a lot of different types. regularize it or at least think about it.
-  query({ and, or, not, which, firstWhich, check, subjects }) {
+  query({ and, or, not, which, firstWhich, check, subjects, propositions }) {
     let argCount = [and, or, not, which, check].filter((x) => Boolean(x));
     if (argCount > 1) {
-      throw "query accepts only one of: and, or, not, which, firstWhich, check, subjects";
+      throw "query accepts only one of: and, or, not, which, firstWhich, check, subjects, propositions";
     }
 
     let key;
@@ -238,6 +262,9 @@ export class Model {
 
     } else if (subjects) {
       returnVal = this.subjects(subjects);
+
+    } else if (propositions) {
+      returnVal = this.propositions(propositions);
 
     } else {
       throw "Unreachable";
@@ -291,16 +318,9 @@ export class Model {
       cycle.addTriggers(triggers);
     });
 
-    console.log("relation", relation);
-    console.log("atoms a", atoms);
     relation.relate(atoms);
-    console.log("atoms b", atoms);
-    console.log("--------")
 
     this._invariants.forEach((invariant) => {
-      console.log("relation...", relation);
-      console.log("atoms...", atoms);
-
       let triggers = invariant.afterRelate(relation, atoms);
       cycle.addTriggers(triggers);
     });

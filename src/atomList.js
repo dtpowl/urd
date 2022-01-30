@@ -1,7 +1,7 @@
 // monadic representation of one or more atoms
 export class AtomList {
   static isAtomList(arg) {
-    return arg.constructor.name == 'AtomList';
+    return arg.constructor && arg.constructor.name == 'AtomList';
   }
 
   static from(val) {

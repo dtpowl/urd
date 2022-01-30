@@ -38,6 +38,17 @@ export class Relation {
     return asAtomLists;
   }
 
+  propositions() {
+    let asAtomLists = new SemanticSet();
+    for (const k of this._table.keys()) {
+      let vals = Array.from(this._table.get(k).values());
+      if (vals.length > 0) {
+        asAtomLists.add(new AtomList(this._name, k, vals));
+      }
+    }
+    return asAtomLists;
+  }
+
   _get(subject) {
     let tableValue = this._table.get(subject);
     if (!tableValue) {
@@ -49,9 +60,7 @@ export class Relation {
 
   // todo: when converting to TypeScript, require args for all of these methods to be AtomLists
   relatedObjectsForSubject(subject) {
-    try {
-      subject = AtomList.from(subject);
-    } catch(e) { debugger }
+    subject = AtomList.from(subject);
     return new SemanticSet(this._get(subject.semanticHashValue()).values());
   }
 

@@ -1,6 +1,9 @@
-export class Action {
-  constructor(event) {
+import { Presentable } from './presentable.js'
+export class Action extends Presentable {
+  constructor(event, props) {
+    super(props);
     this._event = event;
+
     this._onSuccess = [];
     this._onFailure = [];
   }
