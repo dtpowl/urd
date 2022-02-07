@@ -1,15 +1,17 @@
 import { Presentable } from './presentable.js'
 export class Action extends Presentable {
-  constructor(event, props) {
+  constructor(event, props, { willFail }={}) {
     super(props);
     this._event = event;
+    this._failed = Boolean(willFail);
+    this._failMessages = null;
 
     this._onSuccess = [];
-    this._onFailure = [];
   }
 
   // accessor methods
   get event() { return this._event; }
+  get failed() { return this._failed; }
   // end accessor methods
 
   onSuccess(cb) {
@@ -17,7 +19,11 @@ export class Action extends Presentable {
   }
 
   onFailure(cb) {
-    this._onSuccess.push(cb);
+    if (this.failed) {
+      cb(this.failMessages);
+    } else {
+      this._onFailure.push(cb);
+    }
   }
 
   perform(world) {
@@ -28,7 +34,8 @@ export class Action extends Presentable {
     return this._onSuccess.forEach((cb) => cb(world));
   }
 
-  fail(world, messages) {
-    return this._onFailure.forEach((cb) => cb(world));
+  fail(messages) {
+    this._failMessages = messages;
+    return this._onFailure.forEach((cb) => cb(messages));
   }
 }

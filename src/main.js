@@ -4,7 +4,6 @@ import {
   Converse, Mutex
 } from './invariant.js';
 import { Observer } from './observer.js'
-import { IterableArithmetic } from './iterableArithmetic.js'
 import { SemanticSet } from './semanticSet.js'
 import { SemanticMap } from './semanticMap.js'
 
@@ -16,6 +15,15 @@ import { Concept } from './concept.js'
 
 import { GameCoordinator } from './demo/gameCoordinator.js'
 import { GamePresenter } from './demo/gamePresenter.js'
+
+import {
+  MoveActionGenerator,
+  TakeActionGenerator,
+  DropActionGenerator,
+  WriteActionGenerator,
+  EraseActionGenerator,
+  UnlockActionGenerator
+} from './demo/actions.js'
 
 //
 
@@ -46,15 +54,25 @@ const mutObjectNames = {
   new Concept('scene:balcony', {
     title: 'On the Balcony',
     shortDescription: 'the balcony',
-    description: 'You stand on a balcony overlooking the city.'
+    chestStatus: (query, conceptTable) => {
+      const locked = query({check: ['isLocked', 'object:chest']});
+      if (locked) {
+        return 'locked';
+      } else {
+        return 'unlocked';
+      }
+    },
+    description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. It is ${'chestStatus'}.`
+  }),
+  new Concept('scene:hallway', {
+    title: 'In the Hallway',
+    shortDescription: 'the hallway',
+    description: template`You are in the hallway of your apartment building.`
   }),
   new Concept('object:pg', {
-    title: 'your poesiograph',
-    shortDescription: 'a poesiograph',
+    title: 'poesiograph',
+    shortDescription: 'your poesiograph',
     description: 'An elaborate device surmounted by a writing slate.',
-  }),
-  new Concept('object:trunk', {
-
   }),
   new Concept('object:mut-1', {
     adjective: (query, conceptTable) => {
@@ -70,7 +88,7 @@ const mutObjectNames = {
       const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
       const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
       const key = new AtomList(adjConcept, nounConcept);
-      return mutObjectNames[SemanticSet.keyFor(key)];
+      return mutObjectNames[SemanticSet.keyFor(key)] || 'inscrutable lump of protomatter';
     },
   }),
 
@@ -104,6 +122,10 @@ const mutObjectNames = {
     title: 'bird'
   }),
 
+  new Concept('object:chest', {
+    title: 'wooden chest'
+  }),
+
 ]).forEach((s) => {
   conceptTable.set(new AtomList(s.atom), s);
 });
@@ -124,6 +146,10 @@ const relations = [
   // object properties
   ['isPgraph', 1],
   ['exists', 1],
+  ['isLocked', 1],
+
+  ['unlockableByKeyType', 2],
+  ['keyTypeUnlocks', 2],
 
   // poesiograph mechanics
   ['knowsWord', 2],
@@ -142,6 +168,9 @@ const relations = [
 
   ['hasNounProperty', 2],
   ['hasAdjectiveProperty', 2],
+
+  ['isNounPropertyOf', 2],
+  ['isAdjectivePropertyOf', 2]
 ];
 let invariants = [
   [['locatedIn'], Unique],
@@ -159,8 +188,42 @@ let invariants = [
 
   [['hasNounProperty'], Unique],
   [['hasAdjectiveProperty'], Unique],
+
+  [['hasNounProperty', 'isNounPropertyOf'], Converse],
+  [['hasAdjectiveProperty', 'isAdjectivePropertyOf'], Converse],
+
+  [['keyTypeUnlocks', 'unlockableByKeyType'], Converse]
 ];
 let derivedRelations = [
+  [
+    'canBeUnlockedBy', 2, (subject) => {
+      return {
+        and: [
+          { which: ['isNounPropertyOf', 'noun:key'] },
+          { anyWhich: [
+            'isAdjectivePropertyOf', {
+              which: ['unlockableByKeyType', subject]
+            }
+          ] }
+        ]
+      }
+    }
+  ],
+  [
+    'canUnlock', 2, (subject) => {
+      return {
+        and: [
+          { check: ['hasNounProperty', [subject, 'noun:key']] },
+          {
+            anyWhich: [
+              'keyTypeUnlocks',
+              { which: ['hasAdjectiveProperty', subject] }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   [
     'isNear', 2, (subject) => {
       return { which: [ 'locusOf', { firstWhich: ['locatedIn', subject] } ] }
@@ -178,6 +241,16 @@ let derivedRelations = [
           { which: ['isNear', subject] },
           { which: [ 'canCarry', subject ] },
           { not: { which: [ 'possesses', subject ] } }
+        ]
+      }
+    }
+  ],
+  [
+    'canAttemptUnlock', 2, (subject) => {
+      return {
+        and: [
+          { which: ['isNear', subject] },
+          { subjects: 'isLocked' }
         ]
       }
     }
@@ -214,7 +287,7 @@ let derivedRelations = [
   ]
 ];
 
-let pgraphObserver = new Observer({
+const pgraphObserver = new Observer({
   query: {
     or: [
       { propositions: 'hasWrittenOnFirst' },
@@ -274,6 +347,14 @@ let world = new World({
     pgraphObserver
   ],
   transitors: [],
+  actionGenerators: [
+    new MoveActionGenerator(),
+    new TakeActionGenerator(),
+//    new DropActionGenerator(),
+    new EraseActionGenerator(),
+    new WriteActionGenerator(),
+    new UnlockActionGenerator()
+  ],
   init: {
     relate: [
       ['locatedIn', ['person:player', 'scene:studio']],
@@ -281,12 +362,16 @@ let world = new World({
       ['locatedIn', ['object:knife', 'scene:studio']],
       ['locatedIn', ['object:mut-1', 'scene:balcony']],
 
+      ['locatedIn', ['object:chest', 'scene:balcony']],
+      ['isLocked', ['object:chest']],
+
       ['canCarry', ['person:player', 'object:mut-1']],
       ['canCarry', ['person:player', 'object:knife']],
 
       ['isPgraph', ['object:pg']],
 
       ['adjacentTo', ['scene:studio', 'scene:balcony']],
+      ['adjacentTo', ['scene:studio', 'scene:hallway']],
 
       ['hasAdjectiveMeaning', ['word:ka', 'adjective:paper']],
       ['hasAdjectiveMeaning', ['word:lo', 'adjective:glass']],
@@ -299,16 +384,25 @@ let world = new World({
       ['knowsWord', ['person:player', 'word:ka']],
       ['knowsWord', ['person:player', 'word:lo']],
       ['knowsWord', ['person:player', 'word:beh']],
+
+      ['unlockableByKeyType', ['object:chest', 'adjective:metal']]
     ]
   }
 });
 
-world = world.event({
+world = world.next([{
   relate: [
-    ['isWrittenFirstOn', ['word:beh', 'object:pg']],
+    ['locatedIn', ['person:player', 'scene:balcony']],
+    ['isWrittenFirstOn', ['word:lo', 'object:pg']],
     ['isWrittenSecondOn', ['word:ka', 'object:pg']]
   ]
-});
+}]);
+
+
+const qr = world.which('canUnlock', 'object:mut-1');
+console.log("qr", qr);
+
+//console.log("wr", world.check('canUnlock', ['object:mut-1', 'object:chest']));
 
 function init(window) {
   new GameCoordinator({

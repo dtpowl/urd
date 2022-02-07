@@ -1,11 +1,14 @@
 export class Coordinator {
-  constructor({ world, inputHandlerFactory, onNextWorld }) {
+  constructor({ world, view, inputHandlerFactory, onNextWorld }) {
     this._world = world;
+    this._view = view;
     this._inputHandlerFactory = inputHandlerFactory || ((world) => {
       return (action) => action
     }),
     this._onNextWorld = onNextWorld;
   }
+
+  get world() { return this._world; }
 
   init() {
     this._onNextWorld(this, this._world);

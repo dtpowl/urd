@@ -1,12 +1,21 @@
 import { Uid } from './uid.js'
 import { SemanticSet } from './semanticSet.js'
+import { SemanticMap } from './semanticMap.js'
 import { AtomList } from './atomList.js'
 import { Relation } from './relation.js'
 import { Invariant } from './invariant.js'
 import { EventResolutionCycle } from './eventResolutionCycle.js'
 
 export class Model {
-  constructor({ atoms, relations, derivedRelations, invariants, _relationTable, _atomSet }) {
+  static fromParent(parent) {
+    const newModel = parent.clone();
+
+    // this is the only place outside of the constructor that we should assign to _parent
+    newModel._parent = parent;
+    return newModel;
+  }
+
+  constructor({ atoms, relations, derivedRelations, invariants, _atomSet, _parent, _relationTable }) {
     this._uid = Uid.next();
 
     if (_atomSet) {
@@ -19,9 +28,11 @@ export class Model {
     if (_relationTable) {
       this._relations = _relationTable;
     } else {
-      this._relations = new Map();
+      this._relations = new SemanticMap();
       relations.forEach((relationTuple) => this._addRelation(...relationTuple));
     }
+
+    this._parent = _parent;
 
     this._derivedRelationsInput = derivedRelations; // this will be used to clone the Model
     this._derivedRelationArities = new Map();
@@ -44,10 +55,10 @@ export class Model {
 
   // accessors
   get frozen() { return this._frozen; }
+  get uid() { return this._uid; }
   //
 
   clone() {
-    console.log("cloning model");
     let clonedRelationTable = new Map();
     for (const entry of this._relations) {
       clonedRelationTable.set(entry[0], entry[1].clone());
@@ -55,7 +66,8 @@ export class Model {
     return new Model(
       {
         _atomSet: this._atoms,
-        _relationTable: this._relations,
+        _relationTable: this._relations.clone(),
+        _parent: this._parent,
         derivedRelations: this._derivedRelationsInput,
         invariants: this._invariantInput
       }
@@ -94,30 +106,65 @@ export class Model {
     cycle.addTriggers(triggers);
   }
 
+  _resolveQueryArgument(queryArgument) {
+    // todo: better way to determine if something is a subquery
+    if (queryArgument.constructor.name == 'Object') {
+      return this.query(queryArgument);
+    } else {
+      return queryArgument;
+    }
+  }
+
+  _resolveQueryArguments(queryArguments) {
+    if (!Array.isArray(queryArguments)) {
+      return this._resolveQueryArgument(queryArguments);
+    }
+
+    return queryArguments.map((qa) => this._resolveQueryArgument(qa));
+  }
+
+  // todo: is this needed or should we be using _resolveQueryArguments instead
+  atoms(subqueries) {
+    if (!Array.isArray(subqueries)) {
+      return this.atoms([subqueries])
+    }
+
+    return new AtomList(
+      subqueries.map((atomOrQuery) => {
+        if (atomOrQuery.constructor.name == 'Object') {
+          return this.query(atomOrQuery);
+        } else {
+          return atomOrQuery;
+        }
+      })
+    );
+  }
+
   check(relationName, atoms) {
-    let allAtomsInModel = atoms.reduce((ac, atom) => {
+    const resolvedAtoms = this.atoms(atoms);
+    const allAtomsInModel = resolvedAtoms.reduce((ac, atom) => {
       return ac &&= this._atoms.has(atom);
     }, true);
     if (!allAtomsInModel) {
       throw "Cannot evaluate predicate for unknown atoms";
     }
 
-    let relation = this._relations.get(relationName);
+    const relation = this._relations.get(relationName);
     if (relation) {
-      return relation.check(atoms);
+      return relation.check(resolvedAtoms);
     };
 
-    let derivedRelationArity = this._derivedRelationArities.get(relationName);
+    const derivedRelationArity = this._derivedRelationArities.get(relationName);
     if (!derivedRelationArity) {
       throw `unknown relation ${relationName}`;
     }
 
-    if (derivedRelationArity != atoms.length) {
+    if (derivedRelationArity != resolvedAtoms.length) {
       throw `wrong arity for relation ${relationName}`;
     }
 
-    let subject = atoms.first();
-    let objects = atoms.rest();
+    const subject = resolvedAtoms.first();
+    const objects = resolvedAtoms.rest();
     return this.which(relationName, subject).has(objects);
   }
 
@@ -137,6 +184,11 @@ export class Model {
     }
 
     throw `unknown relation ${relationName}`;
+  }
+
+  parentQuery(queryBody) {
+    if (!this._parent) { return null; }
+    return this._parent.query(queryBody);
   }
 
   propositions(relationName) {
@@ -193,14 +245,36 @@ export class Model {
     return this.which(relationName, subject).take();
   }
 
+  anyWhich(relationName, subjects) {
+    const resolvedSubjects = this._resolveQueryArguments(subjects);
+    const subqs = resolvedSubjects.arrayMap((subject) => {
+      return { which: [relationName, subject] }
+    });
+
+    return this.query({ or: subqs });
+  }
+
+  allWhich(relationName, subjects) {
+    const resolvedSubjects = this._resolveQueryArguments(subjects);
+    const subqs = resolvedSubjects.arrayMap((subject) => {
+      return { which: [relationName, subject] }
+    });
+    return this.query({ and: subqs });
+  }
+
   not(queryArg) {
     let subqVal = this.query(queryArg);
-    if (typeof subqVal == 'boolean') { return !subqVal; }
+    if (subqVal == null || typeof subqVal == 'boolean') { return !subqVal; }
     return subqVal.invert(); // SemanticSet
   }
 
   or(queryArg) {
-    let subqVals = queryArg.map((subq) => this.query(subq));
+    let subqVals = this._resolveQueryArguments(queryArg);
+
+    if (subqVals.length == 0) {
+      return new SemanticSet();
+    }
+
     if (subqVals.every((x) => typeof x == 'boolean')) {
       return new SemanticSet(subqVals.reduce((x, ac) => ac || x));
     } else {
@@ -228,7 +302,7 @@ export class Model {
     }
   }
 
-  query({ and, or, not, which, firstWhich, check, subjects, propositions }) {
+  query({ and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent }) {
     let argCount = [and, or, not, which, check].filter((x) => Boolean(x));
     if (argCount > 1) {
       throw "query accepts only one of: and, or, not, which, firstWhich, check, subjects, propositions";
@@ -251,6 +325,12 @@ export class Model {
     } else if (firstWhich) {
       returnVal = this.firstWhich(...firstWhich);
 
+    } else if (anyWhich) {
+      returnVal = this.anyWhich(...anyWhich);
+
+    } else if (allWhich) {
+      returnVal = this.allWhich(...allWhich);
+
     } else if (not) {
       returnVal = this.not(not);
 
@@ -263,11 +343,14 @@ export class Model {
     } else if (subjects) {
       returnVal = this.subjects(subjects);
 
+    } else if (parent) {
+      returnVal = this.parentQuery(parent);
+
     } else if (propositions) {
       returnVal = this.propositions(propositions);
 
     } else {
-      throw "Unreachable";
+      throw `Unrecognized query clause \`${key}\``;
     }
 
     if (this.frozen) {

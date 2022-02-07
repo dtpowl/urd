@@ -17,13 +17,22 @@
 //
 // 7.) It's useful to us to make `add(null)` a no-op
 
-// todo: immutable version of this, with memoized keyForSelf
+// All object values that are members of SemanticSet must implement deep copy as
+// `clone`. (immutable types or frozen instances may return self from clone)
+
+// todo: better name?
+// todo: immutable version of this?
+
+// todo: uid needed?
+//import { Uid } from './uid.js'
+
 export class SemanticSet {
   static isSemanticSet(arg) {
     return arg.constructor == this;
   }
 
   constructor (iterable, {inverted, _map}={})  {
+//    this._uid = Uid.next();
     this._map = _map || new Map();
 
     // add the elements before setting the inverted flag
@@ -37,19 +46,40 @@ export class SemanticSet {
     this[Symbol.iterator] = () => this._map.values();
   }
 
+//  get uid() { return this._uid; }
+
   invert() {
-    return new SemanticSet(this._map.values(), {inverted: !this._inverted});
+    let clonedValues = Array.from(this._map.values()).map((x) => {
+      if (typeof x == 'object') {
+        return x.clone();
+      } else {
+        return x;
+      }
+    });
+    return new SemanticSet(clonedValues, {inverted: !this._inverted});
   }
 
   clone() {
-    return new SemanticSet(this._map.values(), {inverted: this._inverted});
+    let clonedValues = Array.from(this._map.values()).map((x) => {
+      if (typeof x == 'object') {
+        return x.clone();
+      } else {
+        return x;
+      }
+    });
+    return new SemanticSet(clonedValues, {inverted: this._inverted});
   }
 
   get size() {
     return this._map.size;
   }
 
+
+  // every type that can be a model query result must implement `identical`
   identical(otherSemanticSet) {
+    if (!otherSemanticSet) { return false; }
+    if (otherSemanticSet.constructor != SemanticSet) { return false; }
+
     return (
       this.size == otherSemanticSet.size &&
         this.intersection(otherSemanticSet).size == this.size
@@ -80,6 +110,9 @@ export class SemanticSet {
   }
 
   has(el) {
+    if (el === null) { return false; }
+    if (el === undefined) { return false; }
+
     if (this._inverted) {
       return !this._map.has(SemanticSet.keyFor(el));
     } else {
@@ -88,11 +121,11 @@ export class SemanticSet {
   }
 
   every(cb) {
-    return Array.from(this.map.values()).every(cb);
+    return Array.from(this._map.values()).every(cb);
   }
 
   some(cb) {
-    return Array.from(this.map.values()).some(cb);
+    return Array.from(this._map.values()).some(cb);
   }
 
   forEach(cb) {

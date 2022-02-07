@@ -1,10 +1,16 @@
 // a map that respects semantic equality of reference type instances
+//
+// all object values must implement deep copy as `clone`. (immutable
+// types may return self from clone)
+
+// todo: better name? also a better name for SemanticSet
 
 import { SemanticSet } from './semanticSet.js'
 
 export class SemanticMap {
-  constructor() {
-    this._map = new Map();
+  constructor(_map) {
+    this._map = _map || new Map();
+    this[Symbol.iterator] = () => this._map.entries();
   }
 
   set(k, v) {
@@ -13,6 +19,21 @@ export class SemanticMap {
 
   values() {
     return this._map.values();
+  }
+
+  clone() {
+    let clonedMap = new Map();
+    for (const entry of this._map) {
+      let clonedVal;
+      if (typeof entry[1] == 'object') {
+        clonedVal = entry[1].clone();
+      } else {
+        clonedVal = entry[1];
+      }
+      clonedMap.set(entry[0], clonedVal);
+    }
+
+    return new SemanticMap(clonedMap);
   }
 
   mapValues(cb) {

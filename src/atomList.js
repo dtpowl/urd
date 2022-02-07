@@ -1,7 +1,7 @@
 // monadic representation of one or more atoms
 export class AtomList {
   static isAtomList(arg) {
-    return arg.constructor && arg.constructor.name == 'AtomList';
+    return arg && arg.constructor && arg.constructor.name == 'AtomList';
   }
 
   static from(val) {
@@ -25,6 +25,10 @@ export class AtomList {
 
   get length() { return this._atoms.length; }
 
+  clone() {
+    return this; // immutable
+  }
+
   first () {
     return new AtomList(this._atoms[0]);
   }
@@ -45,7 +49,11 @@ export class AtomList {
     ];
   }
 
+  // every type that can be a model query result must implement `identical`
   identical(otherAtomList) {
+    if (!otherAtomList) { return false; }
+    if (otherAtomList.constructor != AtomList) { return false; }
+
     return this._atoms.every((atom, i) => atom == otherAtomList._atoms[i]);
   }
 

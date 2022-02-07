@@ -9,8 +9,9 @@ export class World {
     invariants,
     observers,
     transitors,
+    actionGenerators,
     init
-  }, _events=[], _parent) {
+  }, _events=[], _parent, _lastAction) {
     this._uid = Uid.next();
     this._atoms = atoms;
     this._relations = relations;
@@ -18,6 +19,8 @@ export class World {
     this._invariants = invariants;
     this._observers = observers;
     this._transitors = transitors;
+    this._actionGenerators = actionGenerators;
+    this._lastAction = _lastAction;
 
     if (_parent) {
       this._parent = _parent;
@@ -44,6 +47,7 @@ export class World {
 
   // accessor methods
   get uid() { return this._uid; }
+  get lastAction() { return this._lastAction; }
   // end accessor methods
 
   validateAction(action) {
@@ -61,14 +65,22 @@ export class World {
     let validationResult = this.validateAction(action);
     let permitted = validationResult[0];
     let messages = validationResult[1];
-    if (!permitted) {
-      action.fail(this, messages);
-      return this;
-    } else {
-      let nextWorld = this.event(action.event);
+    if (!permitted && !action.failed) {
+      action.fail(messages);
+    }
+    if (!action.failed) {
+      const nextWorld = this.next([action.event], { lastAction: action });
       action.succeed(nextWorld);
       return nextWorld;
+    } else {
+      return this.next([], { lastAction: action });
     }
+  }
+
+  generateActions() {
+    return this._actionGenerators.map((ag) => {
+      return ag.getActions(this);
+    }).flat();
   }
 
   check(relationName, atoms) {
@@ -101,9 +113,6 @@ export class World {
   }
 
   _prepareModel() {
-    if (!this._model) {
-      this._model = this._parent._model;
-    }
     this._applyEvents();
   }
 
@@ -112,7 +121,7 @@ export class World {
       this._parent._applyEvents();
     }
     if (!this._model) {
-      this._model = this._parent._model;
+      this._model = Model.fromParent(this._parent._model)
     }
     if (this._events.length == 0) {
       return;
@@ -131,7 +140,7 @@ export class World {
       let observerEffects = this._observers.map((o, i) => {
         let effect = o.consider(this._model, observerOldValues[i]);
         if (effect && triggeredObservers.has(o)) {
-          throw "Observer triggered twice!";
+          throw 'Observer triggered twice!';
         } else if (effect) {
           triggeredObservers.add(o);
           nextEvents = nextEvents.concat(effect.events);
@@ -142,18 +151,19 @@ export class World {
     this._events = nextEvents;
     if (nextEvents.length == 0) {
       this._model.freeze();
-    } else {
+    } else if (triggeredObservers.size > 0) {
       this._applyEvents(triggeredObservers);
     }
   }
 
-  event(event) {
+  next(events, { lastAction }={}) {
     return new World({
       atoms: this._atoms,
       relations: this._relations,
       invariants: this._invariants,
       observers: this._observers,
-      transitors: this._transitors
-    }, [event], this);
+      transitors: this._transitors,
+      actionGenerators: this._actionGenerators
+    }, events, this, lastAction);
   }
 }
