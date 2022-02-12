@@ -8,12 +8,15 @@ export class GameCoordinator extends domCoordinator {
       window: window,
       view: new GameView(window),
       renderWorld: function (coordinator, world) {
-        coordinator._view.sceneHead = coordinator.gamePresenter.sceneTitle(world);
+        const view = coordinator._view;
+
+        view.sceneHead = coordinator.gamePresenter.sceneTitle(world);
         coordinator._view.sceneBody = coordinator.gamePresenter.sceneDescription(world);
         coordinator._view.choices = coordinator.gamePresenter.choices(world).map((choice) => {
           const choiceText = coordinator.gamePresenter.renderProperty(choice, 'tag', world);
           return [choiceText, choice];
         });
+        coordinator._view.messages = [coordinator.gamePresenter.lastActionMessage(world)];
 
         coordinator._view.render(coordinator);
       }

@@ -3,7 +3,7 @@ export class GameView {
     this._choices = null;
     this._sceneHead = null
     this._sceneBody = null;
-    this._gameMessages = [];
+    this._messages = [];
     this._window = window;
   }
 
@@ -18,6 +18,9 @@ export class GameView {
   get sceneBody() { return this._sceneBody; }
   set sceneBody(newSceneBody) { this._sceneBody = newSceneBody; }
 
+  get messages() { return this._messages; }
+  set messages(newMessages) { this._messages = newMessages;  }
+
   render(coordinator) {
     this._renderScene(coordinator);
     this._renderMessages(coordinator);
@@ -29,7 +32,9 @@ export class GameView {
     this.$('#scene-body').html(this.sceneBody.join('<br><br>'));
   }
 
-  _renderMessages(coordinator) {  }
+  _renderMessages(coordinator) {
+    this.$('#messages').html(this.messages.join('<br><br>'));
+  }
 
   _renderChoices(coordinator) {
     this.$("#action-list").empty();
