@@ -44,7 +44,7 @@ export class GamePresenter {
   sceneDescription(world) {
     const sceneAtom = world.firstWhich('locatedIn', 'person:player');
     const sceneConcept = this.getConcept(sceneAtom);
-    let sceneDesc = this.renderProperty(sceneConcept, 'description', world);
+    let sceneDescParts = [this.renderProperty(sceneConcept, 'description', world)];
 
     const takeable = world.which('canTake', 'person:player');
     const objectNames = takeable.arrayMap((x) => {
@@ -52,12 +52,12 @@ export class GamePresenter {
     });
     if (objectNames.length > 0) {
       const objectSentence = assertionFromSubjects(objectNames, 'here');
-      sceneDesc += "<br><br>" + objectSentence;
+      sceneDescParts.push(objectSentence);
     }
 
-    console.log("w:", world);
+    console.log("ww:", world);
     console.log("last action message");
     console.log(this.lastActionMessage(world));
-    return sceneDesc;
+    return sceneDescParts;
   }
 }
