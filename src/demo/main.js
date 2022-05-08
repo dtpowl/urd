@@ -1,20 +1,20 @@
-import { World } from './world.js'
+import { World } from '../world.js'
 import {
   Unique, Symmetric, Supervenient,
   Converse, Mutex
-} from './invariant.js';
-import { Observer } from './observer.js'
-import { SemanticSet } from './semanticSet.js'
-import { SemanticMap } from './semanticMap.js'
+} from '../invariant.js';
+import { Observer } from '../observer.js'
+import { SemanticSet } from '../semanticSet.js'
+import { SemanticMap } from '../semanticMap.js'
 
-import { AtomList } from './atomList.js'
-import { Relation } from './relation.js'
+import { AtomList } from '../atomList.js'
+import { Relation } from '../relation.js'
 
-import { template } from './presentable.js'
-import { Concept } from './concept.js'
+import { template } from '../presentable.js'
+import { Concept } from '../concept.js'
 
-import { GameCoordinator } from './demo/gameCoordinator.js'
-import { GamePresenter } from './demo/gamePresenter.js'
+import { GameCoordinator } from './gameCoordinator.js'
+import { GamePresenter } from './gamePresenter.js'
 
 import {
   MoveActionGenerator,
@@ -23,7 +23,7 @@ import {
   WriteActionGenerator,
   EraseActionGenerator,
   UnlockActionGenerator
-} from './demo/actions.js'
+} from './actions.js'
 
 //
 
@@ -49,7 +49,21 @@ const mutObjectNames = {
   new Concept('scene:studio', {
     title: 'The Studio',
     shortDescription: 'the studio',
-    description: 'You are in your studio. In the center of the room rests your trusty poesiograph.'
+    writingDescription: (query, conceptTable) => {
+      const firstWordAtom = query({firstWhich: ['hasWrittenOnFirst', 'object:pg']});
+      const secondWordAtom = query({firstWhich: ['hasWrittenOnSecond', 'object:pg']});
+      if (secondWordAtom) {
+        const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
+        const secondWord = conceptTable.get(secondWordAtom).wordForSlateDescription();
+        return ` On its slate is written "${firstWord} ${secondWord}."`
+      } else if (firstWordAtom) {
+        const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
+        return ` On its slate is written "${firstWord}."`
+      } else {
+        return '';
+      }
+    },
+    description: template`You are in your studio. In the center of the room rests your trusty poesiograph.${'writingDescription'}`
   }),
   new Concept('scene:balcony', {
     title: 'On the Balcony',
@@ -72,7 +86,7 @@ const mutObjectNames = {
   new Concept('object:pg', {
     title: 'poesiograph',
     shortDescription: 'your poesiograph',
-    description: 'An elaborate device surmounted by a writing slate.',
+    description: template`An elaborate device surmounted by a writing slate. ${'writingDescription'}`,
   }),
   new Concept('object:mut-1', {
     adjective: (query, conceptTable) => {
@@ -83,7 +97,6 @@ const mutObjectNames = {
       const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
       return conceptTable.get(nounConcept).title();
     },
-
     title: (query, conceptTable) => {
       const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
       const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
@@ -93,7 +106,8 @@ const mutObjectNames = {
   }),
 
   new Concept('word:ka', {
-    title: 'the word ka'
+    title: 'the word ka',
+    wordForSlateDescription: 'ka',
   }),
   new Concept('adjective:paper', {
     title: 'paper'
@@ -103,7 +117,8 @@ const mutObjectNames = {
   }),
 
   new Concept('word:lo', {
-    title: 'the word lo'
+    title: 'the word lo',
+    wordForSlateDescription: 'lo',
   }),
   new Concept('adjective:glass', {
     title: 'glass'
@@ -113,7 +128,8 @@ const mutObjectNames = {
   }),
 
   new Concept('word:beh', {
-    title: 'the word beh'
+    title: 'the word beh',
+    wordForSlateDescription: 'beh'
   }),
   new Concept('adjective:metal', {
     title: 'metal'
@@ -359,7 +375,7 @@ let world = new World({
     relate: [
       ['locatedIn', ['person:player', 'scene:studio']],
       ['locatedIn', ['object:pg', 'scene:studio']],
-      ['locatedIn', ['object:knife', 'scene:studio']],
+//      ['locatedIn', ['object:knife', 'scene:studio']],
       ['locatedIn', ['object:mut-1', 'scene:balcony']],
 
       ['locatedIn', ['object:chest', 'scene:balcony']],

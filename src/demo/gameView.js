@@ -17,7 +17,6 @@ export class GameView {
 
   get sceneBody() { return this._sceneBody; }
   set sceneBody(newSceneBody) { this._sceneBody = newSceneBody; }
-
   get messages() { return this._messages; }
   set messages(newMessages) { this._messages = newMessages;  }
 
