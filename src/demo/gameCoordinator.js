@@ -17,7 +17,8 @@ export class GameCoordinator extends domCoordinator {
           return [choiceText, choice];
         });
         coordinator._view.messages = [coordinator.gamePresenter.lastActionMessage(world)];
-
+        coordinator._view.lastAction = coordinator.gamePresenter.lastActionDesc(world);
+        coordinator._view.inventory = coordinator.gamePresenter.inventory(world);
         coordinator._view.render(coordinator);
       }
     });

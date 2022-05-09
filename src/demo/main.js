@@ -103,6 +103,9 @@ const mutObjectNames = {
       const key = new AtomList(adjConcept, nounConcept);
       return mutObjectNames[SemanticSet.keyFor(key)] || 'inscrutable lump of protomatter';
     },
+    carryMessage: (query, conceptTable) => {
+      return `You pick up the ${this.title(query, conceptTable)}`;
+    }
   }),
 
   new Concept('word:ka', {
@@ -416,7 +419,7 @@ world = world.next([{
 
 
 const qr = world.which('canUnlock', 'object:mut-1');
-console.log("qr", qr);
+console.log("qrr", qr);
 
 //console.log("wr", world.check('canUnlock', ['object:mut-1', 'object:chest']));
 

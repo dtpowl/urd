@@ -10,6 +10,8 @@ import { Coordinator } from '../coordinator.js'
 
 import { template } from '../presentable.js'
 import { ActionGenerator } from '../actionGenerator.js'
+import { indefArt } from './languageHelpers.js'
+
 
 export class NullAction extends Action {
   constructor(tag, message) {
@@ -111,7 +113,17 @@ export class EraseAction extends Action {
           get(subject).
           render('title', query, conceptTable);
       },
-      tag: template`Erase the writing on the ${'subjectName'}`
+      tag: template`Erase the writing on the ${'subjectName'}`,
+      beforeMessage: (query, conceptTable) => {
+        const canSeeMutObj = query({check: ['isNear', ['object:mut-1', 'person:player']]});
+        if (canSeeMutObj) {
+          const mutObj = conceptTable.get('object:mut-1');
+          return `In a flash of blue light, the ${mutObj.render('title', query, conceptTable)} vanishes!`
+        } else {
+          return null;
+        }
+      },
+      message: 'You wipe the slate clean.'
     });
   }
 }
@@ -153,7 +165,6 @@ export class WriteAdjectiveAction extends Action {
     });
   }
 }
-
 export class WriteNounAction extends Action {
   constructor(word, object) {
     super({
@@ -178,26 +189,12 @@ export class WriteNounAction extends Action {
           get(currentFirstWord).
           render('title', query, conceptTable);
       },
-      tag: template`Write ${'wordName'} on the ${'objectName'}, after ${'adjectiveName'}`
-    });
-  }
-}
-
-export class WriteTwoAction extends Action {
-  constructor(subject, object1, object2) {
-    super({
-      relate: [
-        ['hasWrittenOnFirst', new AtomList(subject, object1)],
-        ['hasWrittenOnSecond', new AtomList(subject, object2)]
-      ]
-    },
-    {
-      subjectName: (query, conceptTable) => {
-        return conceptTable.
-          get(subject).
-          render('title', query, conceptTable);
+      tag: template`Write ${'wordName'} on the ${'objectName'}, after ${'adjectiveName'}`,
+      message: (query, conceptTable) => {
+        const mutObj = conceptTable.get('object:mut-1');
+        return `There is a flash of green light! On the poesiograph's receiving tray, ${indefArt(mutObj.render('title', query, conceptTable))} has appeared.`
       },
-      tag: template`Write something new on ${'subjectName'}`
+
     });
   }
 }
@@ -246,7 +243,8 @@ export class UnlockAction extends Action {
           render('title', query, conceptTable);
       },
       tag: template`Unlock the ${'unlockableName'} with the ${'keyName'}`,
-      failMessage: "The key doesn't fit the lock."
+      message: template`You unlock the ${'unlockableName'} with the ${'keyName'}.`,
+      failMessage: template`The ${'keyName'} doesn't fit the lock.`
     },
     opts);
   }

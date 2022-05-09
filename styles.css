@@ -1,7 +1,23 @@
-div.scene > p.scene-head {
+.logback {
+  font-style: italic;
+  color: #666;
+}
+
+.user-action {
+  font-style: italic;
+  color: #888;
+}
+
+.scene-head {
   font-weight: bold;
 }
 
-div.scene > p.scene-body {
+.scene-body {
   line-height: 0.75rem;
+}
+
+#game-log-wrapper {
+  max-height: 400px;
+  max-width: 1200px;
+  overflow: scroll;
 }

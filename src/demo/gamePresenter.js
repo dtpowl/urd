@@ -16,6 +16,13 @@ export class GamePresenter {
     return world.generateActions();
   }
 
+  inventory(world) {
+    const carried = world.which('possesses', 'person:player');
+    return carried.arrayMap((x) => {
+      return indefArt(this.renderProperty(this.getConcept(x), 'title', world));
+    });
+  }
+
   getConcept(atom) {
     return this._conceptTable.get(atom);
   }
@@ -24,15 +31,25 @@ export class GamePresenter {
     return presentable.render(prop, world.queryFn(), this._conceptTable);
   }
 
+  lastActionDesc(world) {
+    if (!world.lastAction) { return null; }
+    return this.renderProperty(world.lastAction, 'tag', world);
+  }
+
   lastActionMessage(world) {
     const lastAction = world.lastAction;
     if (!lastAction) { return null; }
 
     if (lastAction.failed) {
       return lastAction.render('failMessage', world.queryFn(), this._conceptTable);
-    } else {
-      return lastAction.render('message', world.queryFn(), this._conceptTable);
     }
+    // todo: stop accessing private attr _parent
+    const beforeMessage = lastAction.render('beforeMessage', world._parent.queryFn(), this._conceptTable);
+    if (beforeMessage) {
+      return beforeMessage;
+    }
+
+    return lastAction.render('message', world.queryFn(), this._conceptTable);
   }
 
   sceneTitle(world) {
@@ -56,8 +73,7 @@ export class GamePresenter {
     }
 
     console.log("ww:", world);
-    console.log("last action message");
-    console.log(this.lastActionMessage(world));
+
     return sceneDescParts;
   }
 }
