@@ -389,3 +389,33 @@ export class PayDollarActionGenerator extends ActionGenerator {
     }
   }
 }
+
+
+export class BuyChipsAction extends Action {
+  constructor() {
+    super({
+      unrelate: [
+        ['isClosed', new AtomList('object:vending-machine')]
+      ]
+    },
+    {
+      message: 'The vending machine drops a bag of tortilla chips.',
+      tag: 'Buy some chips from the vending machine'
+    });
+  }
+  succeed(world) {
+    const concept = world.getConcept('object:vending-machine')
+    const oldAmount = concept.getState(world, 'amount');
+    concept.setState(world, 'amount', oldAmount - 3);
+    super.succeed(world);
+  }
+}
+export class BuyChipsActionGenerator extends ActionGenerator {
+  _generateActions(world) {
+    if (world.check('canGetChipsFrom', ['person:player', 'object:vending-machine'])) {
+      return new BuyChipsAction();
+    } else {
+      return [];
+    }
+  }
+}

@@ -27,7 +27,8 @@ import {
   OpenActionGenerator,
   CloseActionGenerator,
   ExamineActionGenerator,
-  PayDollarActionGenerator
+  PayDollarActionGenerator,
+  BuyChipsActionGenerator
 } from './actions.js'
 
 //
@@ -97,6 +98,20 @@ const mutObjectNames = {
   new Concept('scene:hallway', {
     title: 'In the Hallway',
     shortDescription: 'the hallway',
+    whitespace: (query, conceptTable, state) => {
+      const amount = state('object:vending-machine', 'amount');
+      const shouldShowPriceMessage = query({
+        and: [
+          { check: ['contains', ['object:vending-machine', 'object:chips']] },
+          { check: ['isClosed', ['object:vending-machine']] }
+        ]
+      });
+      if (amount != 0 || shouldShowPriceMessage) {
+        return '<br><br>';
+      } else {
+        return '';
+      }
+    },
     vendingMachineStateMessage: (query, conceptTable, state) => {
       const amount = state('object:vending-machine', 'amount');
       if (amount == 0) {
@@ -105,7 +120,20 @@ const mutObjectNames = {
         return ` The vending machine's red LED display shows "$${amount}.00."`
       }
     },
-    description: template`You are in the hallway of your apartment building. A vending machine stands against the wall.<br><br>A bag of tortilla chips costs three dollars.${'vendingMachineStateMessage'}`
+    chipsPriceMessage: (query, conceptTable, state) => {
+      const shouldShowMessage = query({
+        and: [
+          { check: ['contains', ['object:vending-machine', 'object:chips']] },
+          { check: ['isClosed', ['object:vending-machine']] }
+        ]
+      });
+      if (shouldShowMessage) {
+        return "A bag of tortilla chips costs three dollars.";
+      } else {
+        return "";
+      }
+    },
+    description: template`You are in the hallway of your apartment building. A vending machine stands against the wall.${'whitespace'}${'chipsPriceMessage'}${'vendingMachineStateMessage'}`
   }),
   new Concept('object:pg', {
     title: 'poesiograph',
@@ -115,7 +143,7 @@ const mutObjectNames = {
   new Concept('object:vending-machine', {
     title: 'vending machine',
   }, {
-    amount: 1
+    amount: 0
   }),
 
   new Concept('object:mut-1', {
@@ -179,13 +207,14 @@ const mutObjectNames = {
     title: 'jar of salsa'
   }),
 
+  new Concept('object:chips', {
+    title: 'bag of tortilla chips'
+  }),
 
 ]).forEach((s) => {
   conceptTable.set(new AtomList(s.atom), s);
 });
 
-
-const atoms = Array.from(conceptTable.mapValues((v) => v.atom));
 const relations = [
   // movement and place
   ['locatedIn', 2],
@@ -205,7 +234,7 @@ const relations = [
   ['isExaminable', 1],
   ['isLocked', 1],
   ['isClosed', 1],
-  ['canBeOpenedAndClosed', 1],
+  ['canBeOpenedAndClosedManually', 1],
   ['unlockableByKeyType', 2],
   ['keyTypeUnlocks', 2],
 
@@ -216,6 +245,9 @@ const relations = [
   ['isWrittenSecondOn', 2],
   ['hasWrittenOnSecond', 2],
   ['hasWriting', 1],
+
+  // vending machine mechanics
+  ['isPaidEnough', 1],
 
   // magic word semantics
   ['hasAdjectiveMeaning', 2],
@@ -257,6 +289,8 @@ let invariants = [
 
   [['keyTypeUnlocks', 'unlockableByKeyType'], Converse]
 ];
+
+// todo: are unary derived relations broken?
 let derivedRelations = [
   [
     'canBeUnlockedBy', 2, (subject) => {
@@ -292,6 +326,7 @@ let derivedRelations = [
       return {
         and: [
           { which: [ 'isColocatedWith', subject ] },
+          { subjects: 'canBeOpenedAndClosedManually' },
           { subjects: 'isClosed' },
           { not: { subjects: 'isLocked' } },
         ]
@@ -303,7 +338,7 @@ let derivedRelations = [
       return {
         and: [
           { which: [ 'isColocatedWith', subject ] },
-          { subjects: 'canBeOpenedAndClosed' },
+          { subjects: 'canBeOpenedAndClosedManually' },
           { not: { subjects: 'isClosed' } },
         ]
       }
@@ -413,6 +448,17 @@ let derivedRelations = [
         ]
       }
     }
+  ],
+  [
+    'canGetChipsFrom', 2, (subject) => {
+      return {
+        and: [
+          { which: ['isNear', subject] },
+          { subjects: 'isPaidEnough' },
+          { subjects: 'isClosed' },
+        ]
+      }
+    }
   ]
 ];
 
@@ -423,16 +469,16 @@ const pgraphObserver = new Observer({
       { propositions: 'hasWrittenOnSecond' },
     ]
   },
-  effect: (newValue, oldValue, model) => {
-    let noun = model.firstWhich(
+  effect: (newValue, oldValue, world) => {
+    let noun = world.firstWhich(
       'hasNounMeaning', { firstWhich: [ 'hasWrittenOnSecond', 'object:pg' ] }
     );
 
-    let adjective = model.firstWhich(
+    let adjective = world.firstWhich(
       'hasAdjectiveMeaning', { firstWhich: [ 'hasWrittenOnFirst', 'object:pg' ] }
     );
 
-    let pgLocation = model.firstWhich('locatedIn', 'object:pg');
+    let pgLocation = world.firstWhich('locatedIn', 'object:pg');
     let objectAtom = 'object:mut-1';
 
     let events;
@@ -447,8 +493,8 @@ const pgraphObserver = new Observer({
         }
       ]
     } else {
-      let possessedBy = model.firstWhich('possessedBy', objectAtom);
-      let locatedIn = model.firstWhich('locatedIn', objectAtom);
+      let possessedBy = world.firstWhich('possessedBy', objectAtom);
+      let locatedIn = world.firstWhich('locatedIn', objectAtom);
       let unrelates = [];
 
       if (possessedBy) {
@@ -467,47 +513,69 @@ const pgraphObserver = new Observer({
   }
 });
 
+const vendingMachineObserver = new Observer({
+  stateConditions: [
+    ['object:vending-machine', 'amount', 3]
+  ],
+  modelCondition: {
+    not: { check: ['isPaidEnough', 'object:vending-machine'] }
+  },
+  effect: (newValue, oldValue, world) => {
+    const events = [
+      {
+        relate: [
+          ['isPaidEnough', ['object:vending-machine']]
+        ]
+      }
+    ];
+    return { events: events };
+  }
+});
+
+const actionGenerators = [
+  new MoveActionGenerator(),
+  new TakeActionGenerator(),
+  //    new DropActionGenerator(),
+  new EraseActionGenerator(),
+  new WriteActionGenerator(),
+  new UnlockActionGenerator(),
+  new OpenActionGenerator(),
+  new CloseActionGenerator(),
+  //    new ExamineActionGenerator(),
+  new PayDollarActionGenerator(),
+  new BuyChipsActionGenerator()
+];
+
 let world = new World({
-  atoms: atoms,
   relations: relations,
   derivedRelations: derivedRelations,
   invariants: invariants,
   observers: [
-    pgraphObserver
+    pgraphObserver,
+    vendingMachineObserver
   ],
-  transitors: [],
-  actionGenerators: [
-    new MoveActionGenerator(),
-    new TakeActionGenerator(),
-//    new DropActionGenerator(),
-    new EraseActionGenerator(),
-    new WriteActionGenerator(),
-    new UnlockActionGenerator(),
-    new OpenActionGenerator(),
-    new CloseActionGenerator(),
-    new ExamineActionGenerator(),
-    new PayDollarActionGenerator()
-  ],
+  actionGenerators: actionGenerators,
   conceptTable: conceptTable,
   init: {
     relate: [
-      ['locatedIn', ['person:player', 'scene:studio']],
+      ['locatedIn', ['person:player', 'scene:balcony']],
       ['locatedIn', ['object:pg', 'scene:studio']],
+
       ['locatedIn', ['object:chest', 'scene:balcony']],
-//      ['contains', ['object:chest', 'object:knife']],
       ['contains', ['object:chest', 'object:jar']],
-      ['locatedIn', ['object:mut-1', 'scene:balcony']],
+
       ['locatedIn', ['object:vending-machine', 'scene:hallway']],
+      ['contains', ['object:vending-machine', 'object:chips']],
+      ['isClosed', ['object:vending-machine']],
 
-//      ['isExaminable', ['object:vending-machine']],
-
-      ['canBeOpenedAndClosed', ['object:chest']],
+      ['canBeOpenedAndClosedManually', ['object:chest']],
       ['isClosed', ['object:chest']],
       ['isLocked', ['object:chest']],
 
       ['canCarry', ['person:player', 'object:mut-1']],
       ['canCarry', ['person:player', 'object:knife']],
       ['canCarry', ['person:player', 'object:jar']],
+      ['canCarry', ['person:player', 'object:chips']],
 
       ['isPgraph', ['object:pg']],
 
@@ -527,17 +595,12 @@ let world = new World({
       ['knowsWord', ['person:player', 'word:beh']],
 
       ['unlockableByKeyType', ['object:chest', 'adjective:metal']],
+
+      ['isWrittenFirstOn', ['word:lo', 'object:pg']],
+      ['isWrittenSecondOn', ['word:ka', 'object:pg']]
     ]
   }
 });
-
-world = world.next([{
-  relate: [
-    ['locatedIn', ['person:player', 'scene:balcony']],
-    ['isWrittenFirstOn', ['word:lo', 'object:pg']],
-    ['isWrittenSecondOn', ['word:ka', 'object:pg']]
-  ]
-}]);
 
 function init(window) {
   new GameCoordinator({

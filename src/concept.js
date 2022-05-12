@@ -66,8 +66,10 @@ export class Concept extends Presentable {
     const nextState = this._stateTable.get(world.uid);
 
     if (currentState) {
-      for (let k in currentState) {
-        nextState.set(k, currentState.get(k));
+      for (let entry of currentState) {
+        if (!nextState.has(entry[0])) {
+          nextState.set(entry[0], entry[1]);
+        }
       }
     }
     for (let entry of this._initState) {

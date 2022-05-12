@@ -14,12 +14,12 @@ export class World {
     init
   }, _events=[], _parent, _lastAction) {
     this._uid = Uid.next();
-    this._atoms = atoms;
+    this._atoms = atoms || Array.from(conceptTable.mapValues((v) => v.atom));
     this._relations = relations;
     this._derivedRelations = derivedRelations;
     this._invariants = invariants;
     this._observers = observers;
-    this._transitors = transitors;
+    this._transitors = transitors || [];
     this._actionGenerators = actionGenerators;
     this._conceptTable = conceptTable;
     this._lastAction = _lastAction;
@@ -31,7 +31,7 @@ export class World {
       this._model = null;
     } else {
       this._model = new Model({
-        atoms: atoms,
+        atoms: this._atoms,
         relations: relations,
         derivedRelations: derivedRelations || [],
         invariants: invariants
@@ -160,7 +160,7 @@ export class World {
       this._model.assert(event);
 
       let observerEffects = this._observers.map((o, i) => {
-        let effect = o.consider(this._model, observerOldValues[i]);
+        let effect = o.consider(this, this._model, observerOldValues[i]);
         if (effect && triggeredObservers.has(o)) {
           throw 'Observer triggered twice!';
         } else if (effect) {

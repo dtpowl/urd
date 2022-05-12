@@ -72,7 +72,7 @@ export class AtomList {
   }
 
   forEach(cb) {
-    this._atoms.each((el) => {
+    this._atoms.forEach((el) => {
       cb(new AtomList(el));
     });
   }

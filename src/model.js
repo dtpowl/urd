@@ -142,12 +142,12 @@ export class Model {
 
   check(relationName, atoms) {
     const resolvedAtoms = this.atoms(atoms);
-    const allAtomsInModel = resolvedAtoms.reduce((ac, atom) => {
-      return ac &&= this._atoms.has(atom);
-    }, true);
-    if (!allAtomsInModel) {
-      throw "Cannot evaluate predicate for unknown atoms";
-    }
+    resolvedAtoms.forEach((atom) => {
+      if (!this._atoms.has(atom)) {
+        // todo: log atom name here
+        throw "Cannot evaluate predicate for unknown atom";
+      }
+    });
 
     const relation = this._relations.get(relationName);
     if (relation) {
