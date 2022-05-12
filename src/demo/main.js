@@ -1,7 +1,8 @@
 import { World } from '../world.js'
 import {
-  Unique, Symmetric, Supervenient,
-  Converse, Mutex
+  Unique,
+  Symmetric, Supervenient,
+  Converse, Mutex, Implies
 } from '../invariant.js';
 import { Observer } from '../observer.js'
 import { SemanticSet } from '../semanticSet.js'
@@ -22,7 +23,11 @@ import {
   DropActionGenerator,
   WriteActionGenerator,
   EraseActionGenerator,
-  UnlockActionGenerator
+  UnlockActionGenerator,
+  OpenActionGenerator,
+  CloseActionGenerator,
+  ExamineActionGenerator,
+  PayDollarActionGenerator
 } from './actions.js'
 
 //
@@ -42,9 +47,15 @@ const mutObjectNames = {
   new Concept('person:player', {
     title: 'you'
   }),
+  new Concept('void', {
+  }),
   new Concept('object:knife', {
     title: 'silver knife',
     shortDescription: 'a silver knife'
+  }),
+  new Concept('object:jar', {
+    title: 'jar of salsa',
+    shortDescription: 'a jar of salsa'
   }),
   new Concept('scene:studio', {
     title: 'The Studio',
@@ -63,17 +74,22 @@ const mutObjectNames = {
         return '';
       }
     },
-    description: template`You are in your studio. In the center of the room rests your trusty poesiograph.${'writingDescription'}`
+    description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}`
   }),
   new Concept('scene:balcony', {
     title: 'On the Balcony',
     shortDescription: 'the balcony',
     chestStatus: (query, conceptTable) => {
+      const open = query({not: { check: ['isClosed', 'object:chest'] }});
+      if (open) {
+        return 'open';
+      }
+
       const locked = query({check: ['isLocked', 'object:chest']});
       if (locked) {
-        return 'locked';
+        return 'closed and locked';
       } else {
-        return 'unlocked';
+        return 'closed and unlocked';
       }
     },
     description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. It is ${'chestStatus'}.`
@@ -81,13 +97,27 @@ const mutObjectNames = {
   new Concept('scene:hallway', {
     title: 'In the Hallway',
     shortDescription: 'the hallway',
-    description: template`You are in the hallway of your apartment building.`
+    vendingMachineStateMessage: (query, conceptTable, state) => {
+      const amount = state('object:vending-machine', 'amount');
+      if (amount == 0) {
+        return '';
+      } else {
+        return ` The vending machine's red LED display shows "$${amount}.00."`
+      }
+    },
+    description: template`You are in the hallway of your apartment building. A vending machine stands against the wall.<br><br>A bag of tortilla chips costs three dollars.${'vendingMachineStateMessage'}`
   }),
   new Concept('object:pg', {
     title: 'poesiograph',
     shortDescription: 'your poesiograph',
-    description: template`An elaborate device surmounted by a writing slate. ${'writingDescription'}`,
+    description: 'An elaborate device surmounted by a writing slate.',
   }),
+  new Concept('object:vending-machine', {
+    title: 'vending machine',
+  }, {
+    amount: 1
+  }),
+
   new Concept('object:mut-1', {
     adjective: (query, conceptTable) => {
       const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
@@ -145,6 +175,11 @@ const mutObjectNames = {
     title: 'wooden chest'
   }),
 
+  new Concept('object:jar', {
+    title: 'jar of salsa'
+  }),
+
+
 ]).forEach((s) => {
   conceptTable.set(new AtomList(s.atom), s);
 });
@@ -161,12 +196,16 @@ const relations = [
   ['canCarry', 2],
   ['possesses', 2],
   ['possessedBy', 2],
+  ['contains', 2],
+  ['containedIn', 2],
 
   // object properties
   ['isPgraph', 1],
-  ['exists', 1],
+  //  ['exists', 1],
+  ['isExaminable', 1],
   ['isLocked', 1],
-
+  ['isClosed', 1],
+  ['canBeOpenedAndClosed', 1],
   ['unlockableByKeyType', 2],
   ['keyTypeUnlocks', 2],
 
@@ -193,11 +232,16 @@ const relations = [
 ];
 let invariants = [
   [['locatedIn'], Unique],
+  [['possessedBy'], Unique],
+
   [['locusOf', 'locatedIn'], Converse],
   [['adjacentTo'], Symmetric],
 
   [['possesses', 'possessedBy'], Converse],
   [['locatedIn', 'possesses'], Supervenient],
+
+  [['contains', 'containedIn'], Converse],
+  [['locatedIn', 'contains'], Supervenient],
 
   [['isWrittenFirstOn', 'hasWrittenOnFirst'], Converse],
   [['isWrittenSecondOn', 'hasWrittenOnSecond'], Converse],
@@ -244,8 +288,62 @@ let derivedRelations = [
     }
   ],
   [
+    'canOpen', 2, (subject) => {
+      return {
+        and: [
+          { which: [ 'isColocatedWith', subject ] },
+          { subjects: 'isClosed' },
+          { not: { subjects: 'isLocked' } },
+        ]
+      }
+    }
+  ],
+  [
+    'canClose', 2, (subject) => {
+      return {
+        and: [
+          { which: [ 'isColocatedWith', subject ] },
+          { subjects: 'canBeOpenedAndClosed' },
+          { not: { subjects: 'isClosed' } },
+        ]
+      }
+    }
+  ],
+  [
+    'canExamine', 2, (subject) => {
+      return {
+        and: [
+          { which: [ 'isColocatedWith', subject ] },
+          { subjects: 'isExaminable' },
+        ]
+      }
+    }
+  ],
+  [
+    'openlyContains', 2, (subject) => {
+      return {
+        and: [
+          { not: { check: [ 'isClosed', subject ] } },
+          { which: [ 'contains', subject ] },
+        ]
+      }
+    }
+  ],
+  [
+    'isColocatedWith', 2, (subject) => {
+      return {
+        which: ['locusOf', { firstWhich: [ 'locatedIn', subject ] }]
+      }
+    }
+  ],
+  [
     'isNear', 2, (subject) => {
-      return { which: [ 'locusOf', { firstWhich: ['locatedIn', subject] } ] }
+      return {
+        or: [
+          { which: ['isColocatedWith', subject] },
+          { anyWhich: ['openlyContains', { which: ['isColocatedWith', subject] }] }
+        ]
+      }
     }
   ],
   [
@@ -300,6 +398,18 @@ let derivedRelations = [
         or: [
           { which: ['hasWrittenOnFirst', pg] },
           { which: ['hasWrittenOnSecond', pg] }
+        ]
+      }
+    }
+  ],
+  [
+    'canPay', 2, (subject) => {
+      return {
+        and: [
+          { check: ['possessedBy', ['object:mut-1', subject]] },
+          { check: ['hasAdjectiveProperty', ['object:mut-1', 'adjective:paper']] },
+          { check: ['hasNounProperty', ['object:mut-1', 'noun:money']] },
+          { which: ['isNear', subject] }
         ]
       }
     }
@@ -372,20 +482,32 @@ let world = new World({
 //    new DropActionGenerator(),
     new EraseActionGenerator(),
     new WriteActionGenerator(),
-    new UnlockActionGenerator()
+    new UnlockActionGenerator(),
+    new OpenActionGenerator(),
+    new CloseActionGenerator(),
+    new ExamineActionGenerator(),
+    new PayDollarActionGenerator()
   ],
+  conceptTable: conceptTable,
   init: {
     relate: [
       ['locatedIn', ['person:player', 'scene:studio']],
       ['locatedIn', ['object:pg', 'scene:studio']],
-//      ['locatedIn', ['object:knife', 'scene:studio']],
-      ['locatedIn', ['object:mut-1', 'scene:balcony']],
-
       ['locatedIn', ['object:chest', 'scene:balcony']],
+//      ['contains', ['object:chest', 'object:knife']],
+      ['contains', ['object:chest', 'object:jar']],
+      ['locatedIn', ['object:mut-1', 'scene:balcony']],
+      ['locatedIn', ['object:vending-machine', 'scene:hallway']],
+
+//      ['isExaminable', ['object:vending-machine']],
+
+      ['canBeOpenedAndClosed', ['object:chest']],
+      ['isClosed', ['object:chest']],
       ['isLocked', ['object:chest']],
 
       ['canCarry', ['person:player', 'object:mut-1']],
       ['canCarry', ['person:player', 'object:knife']],
+      ['canCarry', ['person:player', 'object:jar']],
 
       ['isPgraph', ['object:pg']],
 
@@ -404,7 +526,7 @@ let world = new World({
       ['knowsWord', ['person:player', 'word:lo']],
       ['knowsWord', ['person:player', 'word:beh']],
 
-      ['unlockableByKeyType', ['object:chest', 'adjective:metal']]
+      ['unlockableByKeyType', ['object:chest', 'adjective:metal']],
     ]
   }
 });
@@ -416,12 +538,6 @@ world = world.next([{
     ['isWrittenSecondOn', ['word:ka', 'object:pg']]
   ]
 }]);
-
-
-const qr = world.which('canUnlock', 'object:mut-1');
-console.log("qrr", qr);
-
-//console.log("wr", world.check('canUnlock', ['object:mut-1', 'object:chest']));
 
 function init(window) {
   new GameCoordinator({

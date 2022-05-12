@@ -61,7 +61,15 @@ export class TakeAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
-      tag: template`Take the ${'objectName'}`
+      containerPhrase: (query, conceptTable) => {
+        const container = query({firstWhich: ['containedIn', object]});
+        if (!container) {
+          return '';
+        } else {
+          return `from the ${conceptTable.get(container).render('title', query, conceptTable)}`;
+        }
+      },
+      tag: template`Take the ${'objectName'} ${'containerPhrase'}`
     });
   }
 }
@@ -266,10 +274,118 @@ export class UnlockActionGenerator extends ActionGenerator {
         } else {
           willFail = true;
         }
-        console.log("willFail", willFail);
 
         return new UnlockAction(unlockable, key, {willFail: willFail});
       })
     }).flat();
+  }
+}
+
+export class OpenAction extends Action {
+  constructor(object) {
+    super({
+      unrelate: [ ['isClosed', new AtomList(object)] ]
+    },
+    {
+      objectName: (query, conceptTable) => {
+        return conceptTable.
+          get(object).
+          render('title', query, conceptTable);
+      },
+      tag: template`Open the ${'objectName'}`
+    });
+  }
+}
+export class OpenActionGenerator extends ActionGenerator {
+  _generateActions(world) {
+    const openableThings = world.which('canOpen', 'person:player');
+    return openableThings.arrayMap((openable) => {
+      return new OpenAction(openable);
+    });
+  }
+}
+
+export class CloseAction extends Action {
+  constructor(object) {
+    super({
+      relate: [ ['isClosed', new AtomList(object)] ]
+    },
+    {
+      objectName: (query, conceptTable) => {
+        return conceptTable.
+          get(object).
+          render('title', query, conceptTable);
+      },
+      tag: template`Close the ${'objectName'}`
+    });
+  }
+}
+export class CloseActionGenerator extends ActionGenerator {
+  _generateActions(world) {
+    const closeableThings = world.which('canClose', 'person:player');
+    return closeableThings.arrayMap((closeable) => {
+      return new CloseAction(closeable);
+    });
+  }
+}
+
+export class ExamineAction extends Action {
+  constructor(object) {
+    super({
+      relate: []
+    },
+    {
+      objectName: (query, conceptTable) => {
+        return conceptTable.
+          get(object).
+          render('title', query, conceptTable);
+      },
+      message: (query, conceptTable) => {
+        return conceptTable.
+          get(object).
+          render('examineMessage', query, conceptTable);
+      },
+      tag: template`Examine the ${'objectName'}`
+    });
+  }
+}
+export class ExamineActionGenerator extends ActionGenerator {
+  _generateActions(world) {
+    const examinableThings = world.which('canExamine', 'person:player');
+    return examinableThings.arrayMap((examinable) => {
+      return new ExamineAction(examinable);
+    });
+  }
+}
+
+export class PayDollarAction extends Action {
+  constructor() {
+    super({
+      unrelate: [
+        ['possesses', new AtomList('person:player', 'object:mut-1')],
+      ],
+      relate: [
+        ['locatedIn', new AtomList('object:mut-1', 'void')],
+      ],
+    },
+    {
+      message: 'The vending machine accepts your money with a whir.',
+      tag: 'Put a dollar in the vending machine'
+    });
+  }
+  succeed(world) {
+    const concept = world.getConcept('object:vending-machine')
+    const oldAmount = concept.getState(world, 'amount');
+    concept.setState(world, 'amount', oldAmount + 1);
+    super.succeed(world);
+  }
+}
+export class PayDollarActionGenerator extends ActionGenerator {
+  _generateActions(world) {
+    if (world.check('canPay', ['person:player', 'object:vending-machine'])) {
+      return new PayDollarAction();
+    } else {
+      return [];
+    }
   }
 }

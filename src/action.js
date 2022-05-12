@@ -31,7 +31,8 @@ export class Action extends Presentable {
   }
 
   succeed(world) {
-    return this._onSuccess.forEach((cb) => cb(world));
+    this._onSuccess.forEach((cb) => cb(world));
+    world.commitState();
   }
 
   fail(messages) {

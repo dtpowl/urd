@@ -132,6 +132,32 @@ export class Symmetric extends Invariant {
   }
 }
 
+export class Implies extends Invariant {
+  constructor(lhs, rhs) {
+    super();
+    this._lhs = lhs;
+    this._rhs = rhs;
+  }
+
+  afterRelate(relation, atoms) {
+    if (relation != this._lhs) { return {}; }
+    return {
+      relate: [
+        [this._rhs, atoms]
+      ]
+    }
+  }
+
+  afterUnrelate(relation, atoms) {
+    if (relation != this._lhs) { return {}; }
+    return {
+      unrelate: [
+        [this._rhs, atoms]
+      ]
+    }
+  }
+}
+
 export class Supervenient extends Invariant {
   // f(x,y) && g(x,z) => g(y,z)
   constructor(locatedIn, possesses) {

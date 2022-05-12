@@ -28,7 +28,7 @@ export class GamePresenter {
   }
 
   renderProperty(presentable, prop, world) {
-    return presentable.render(prop, world.queryFn(), this._conceptTable);
+    return presentable.render(prop, world.queryFn(), this._conceptTable, world.stateFn());
   }
 
   lastActionDesc(world) {
@@ -41,7 +41,7 @@ export class GamePresenter {
     if (!lastAction) { return null; }
 
     if (lastAction.failed) {
-      return lastAction.render('failMessage', world.queryFn(), this._conceptTable);
+      return lastAction.render('failMessage', world.queryFn(), this._conceptTable, world.stateFn());
     }
     // todo: stop accessing private attr _parent
     const beforeMessage = lastAction.render('beforeMessage', world._parent.queryFn(), this._conceptTable);
@@ -49,7 +49,7 @@ export class GamePresenter {
       return beforeMessage;
     }
 
-    return lastAction.render('message', world.queryFn(), this._conceptTable);
+    return lastAction.render('message', world.queryFn(), this._conceptTable, world.stateFn());
   }
 
   sceneTitle(world) {
@@ -72,7 +72,7 @@ export class GamePresenter {
       sceneDescParts.push(objectSentence);
     }
 
-    console.log("ww:", world);
+    console.log("w:", world);
 
     return sceneDescParts;
   }

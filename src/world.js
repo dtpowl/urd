@@ -10,6 +10,7 @@ export class World {
     observers,
     transitors,
     actionGenerators,
+    conceptTable,
     init
   }, _events=[], _parent, _lastAction) {
     this._uid = Uid.next();
@@ -20,7 +21,10 @@ export class World {
     this._observers = observers;
     this._transitors = transitors;
     this._actionGenerators = actionGenerators;
+    this._conceptTable = conceptTable;
     this._lastAction = _lastAction;
+
+    this._hasGeneratedNext = false;
 
     if (_parent) {
       this._parent = _parent;
@@ -49,6 +53,10 @@ export class World {
   get uid() { return this._uid; }
   get lastAction() { return this._lastAction; }
   // end accessor methods
+
+  getConcept(atom) {
+    return this._conceptTable.get(atom);
+  }
 
   validateAction(action) {
     let permitted = true;
@@ -98,6 +106,11 @@ export class World {
     return this._model.firstWhich(relationName, subject);
   }
 
+  anyWhich(relationName, subjects) {
+    this._prepareModel();
+    return this._model.anyWhich(relationName, subjects);
+  }
+
   subjects(relationName, subject) {
     this._prepareModel();
     return this._model.subjects(relationName, subject);
@@ -108,8 +121,17 @@ export class World {
     return this._model.query(arguments[0]);
   }
 
+  state(concept, stateField) {
+    this._prepareModel(); // needed?
+    return this._conceptTable.get(concept).getState(this, stateField);
+  }
+
   queryFn() {
     return this.query.bind(this);
+  }
+
+  stateFn() {
+    return this.state.bind(this);
   }
 
   _prepareModel() {
@@ -156,14 +178,30 @@ export class World {
     }
   }
 
+  commitState() {
+    if (this._conceptTable) {
+      for (let concept of this._conceptTable.values()) {
+        if (concept.hasState) {
+          concept.commitWorld(this);
+        }
+      }
+    }
+  }
+
   next(events, { lastAction }={}) {
+    if (this._hasGeneratedNext) {
+      throw "Can't call `next` more than once on the same world!";
+    }
+    this._hasGeneratedNext = true;
+
     return new World({
       atoms: this._atoms,
       relations: this._relations,
       invariants: this._invariants,
       observers: this._observers,
       transitors: this._transitors,
-      actionGenerators: this._actionGenerators
+      actionGenerators: this._actionGenerators,
+      conceptTable: this._conceptTable
     }, events, this, lastAction);
   }
 }

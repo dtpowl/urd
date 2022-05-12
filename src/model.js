@@ -386,6 +386,8 @@ export class Model {
   }
 
   _unrelate(relationName, atoms) {
+    throw 'Unused?'; // todo
+
     atoms = AtomList.from(atoms);
 
     let relation = this._relations.get(relationName);
