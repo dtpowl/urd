@@ -31,43 +31,34 @@ export class GameView {
     this._renderMessages(coordinator);
     this._renderChoices(coordinator);
     this._renderInventory(coordinator);
-    this._scrollToBottom(coordinator);
+    this._scrollToTop(coordinator);
   }
 
-  _scrollToBottom(coordinator) {
+  _scrollToTop(coordinator) {
     $("#game-log-wrapper").
       animate({
-        scrollTop: $('#game-log-wrapper').prop("scrollHeight")
+        scrollTop: $('#game-log-wrapper').prop('0')
       }, 500);
   }
 
   _appendNewOutputBlock(coordinator) {
-    if (this.$('#scene').length > 0) {
-      this.$('#scene').attr('class', 'scene logback');
-      this.$('#scene').removeAttr('id');
-    }
     if (this.lastAction) {
-      this.$('#game-log-wrapper').append(`
-        <span class="user-action">&gt; ${this.lastAction}</span>
+      this.$('#game-log-wrapper').prepend('<br><br>');
+      this.$('#game-log-wrapper').prepend(this.messages.join('<br><br>'));
+      this.$('#game-log-wrapper').prepend(`
+        <div class="user-action">&gt; ${this.lastAction}</div>
       `)
     }
     this.$('#action-list').html('');
-    this.$('#game-log-wrapper').append(`
-      <div id="scene" class="scene">
-        <p id="messages" class="messages"></p>
-        <p id="scene-head" class="scene-head"></p>
-        <p id="scene-body" class="scene-body"></p>
-      </div>
-    `);
   }
 
   _renderScene(coordinator) {
     this.$('#scene > .scene-head').html(this.sceneHead);
-    this.$('#scene > .scene-body').html(this.sceneBody.join('<br><br>'));
+    this.$('#scene > .scene-body').html(this.sceneBody.join('<br>'));
   }
 
   _renderMessages(coordinator) {
-    this.$('#scene > .messages').html(this.messages.join('<br><br>'));
+    this.$('#latest-message').html(this.messages.join('<br><br>'));
   }
 
   _renderChoices(coordinator) {

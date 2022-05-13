@@ -5,15 +5,30 @@
   </head>
 
   <body>
-    <div id="game-log-wrapper">
-    </div>
-    <div id="game-state-wrapper">
-      <ul id="action-list">
-      </ul>
-      <hr>
-      <span id="inventory-list-caption" style="display:none">You are carrying:</span>
-      <ul id="inventory-list">
-      </ul>
+    <div id="game-view">
+
+      <div id="latest-message">
+      </div>
+      <div id="scene" class="scene">
+        <div id="scene-head" class="scene-head"></div>
+        <div id="scene-body" class="scene-body"></div>
+      </div>
+
+      <div id="game-state-wrapper">
+        <div id="game-log-wrapper">
+        </div>
+
+        <div id="player-state-wrapper">
+          <ul id="action-list">
+          </ul>
+
+          <span id="inventory-list-caption" style="display:none">You are carrying:</span>
+          <ul id="inventory-list">
+          </ul>
+        </div>
+
+      </div>
+
     </div>
   </body>
 

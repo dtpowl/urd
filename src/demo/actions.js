@@ -36,6 +36,7 @@ export class MoveAction extends Action {
           get(destination).
           render('shortDescription', query, conceptTable);
       },
+      message: template`You go to ${'destinationName'}.`,
       tag: template`Go to ${'destinationName'}`
     });
   }
@@ -69,6 +70,7 @@ export class TakeAction extends Action {
           return `from the ${conceptTable.get(container).render('title', query, conceptTable)}`;
         }
       },
+      message: 'Taken.',
       tag: template`Take the ${'objectName'} ${'containerPhrase'}`
     });
   }
@@ -94,6 +96,7 @@ export class DropAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
+      message: 'Dropped.',
       tag: template`Drop the ${'objectName'}`
     });
   }
@@ -169,6 +172,7 @@ export class WriteAdjectiveAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
+      message: template`You carefully inscribe the word ${'wordName'} on the slate.`,
       tag: template`Write ${'wordName'} on the ${'objectName'}`
     });
   }
@@ -197,6 +201,7 @@ export class WriteNounAction extends Action {
           get(currentFirstWord).
           render('title', query, conceptTable);
       },
+      message: template`You carefully inscribe the word ${'wordName'} on the slate.`,
       tag: template`Write ${'wordName'} on the ${'objectName'}, after ${'adjectiveName'}`,
       message: (query, conceptTable) => {
         const mutObj = conceptTable.get('object:mut-1');
@@ -292,6 +297,7 @@ export class OpenAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
+      message: template`You open the ${'objectName'}`,
       tag: template`Open the ${'objectName'}`
     });
   }
@@ -316,6 +322,7 @@ export class CloseAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
+      message: template`You close the ${'objectName'}`,
       tag: template`Close the ${'objectName'}`
     });
   }

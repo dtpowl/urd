@@ -1,23 +1,62 @@
+#latest-message {
+  min-height:35px;
+}
+
+#game-view {
+  display: flex;
+  flex-direction: column;
+}
+
+#scene {
+  display: flex;
+  flex-direction: column;
+  border-bottom-style: solid;
+  border-color: #444;
+
+  min-width: 1000px;
+  max-width: 1000px;
+
+  min-height: 150px;
+
+  line-height: 1.5em;
+}
+
+#game-state-wrapper {
+  display: flex;
+  flex-direction: row;
+}
+
+#player-state-wrapper {
+  display: flex;
+  flex-direction: column;
+  border-left-style: solid;
+  border-color: #444;
+}
+
 .logback {
-  font-style: italic;
-  color: #666;
+  color: #444;
 }
 
 .user-action {
   font-style: italic;
-  color: #888;
+  color: #777;
 }
 
 .scene-head {
   font-weight: bold;
 }
 
-.scene-body {
-  line-height: 0.75rem;
+#game-log-wrapper {
+  min-height: 400px;
+  max-height: 400px;
+  overflow-y: scroll;
+
+  min-width: 400px;
+  max-width: 400px;
+
+  margin-top: 1em;
 }
 
-#game-log-wrapper {
-  max-height: 400px;
-  max-width: 1200px;
-  overflow: scroll;
+#inventory-list-caption {
+  margin-left: 1.5em;
 }

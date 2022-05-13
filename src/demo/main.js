@@ -462,86 +462,85 @@ let derivedRelations = [
   ]
 ];
 
-const pgraphObserver = new Observer({
-  query: {
-    or: [
-      { propositions: 'hasWrittenOnFirst' },
-      { propositions: 'hasWrittenOnSecond' },
-    ]
-  },
-  effect: (newValue, oldValue, world) => {
-    let noun = world.firstWhich(
-      'hasNounMeaning', { firstWhich: [ 'hasWrittenOnSecond', 'object:pg' ] }
-    );
+const observers = [
+  new Observer({
+    query: {
+      or: [
+        { propositions: 'hasWrittenOnFirst' },
+        { propositions: 'hasWrittenOnSecond' },
+      ]
+    },
+    effect: (newValue, oldValue, world) => {
+      let noun = world.firstWhich(
+        'hasNounMeaning', { firstWhich: [ 'hasWrittenOnSecond', 'object:pg' ] }
+      );
 
-    let adjective = world.firstWhich(
-      'hasAdjectiveMeaning', { firstWhich: [ 'hasWrittenOnFirst', 'object:pg' ] }
-    );
+      let adjective = world.firstWhich(
+        'hasAdjectiveMeaning', { firstWhich: [ 'hasWrittenOnFirst', 'object:pg' ] }
+      );
 
-    let pgLocation = world.firstWhich('locatedIn', 'object:pg');
-    let objectAtom = 'object:mut-1';
+      let pgLocation = world.firstWhich('locatedIn', 'object:pg');
+      let objectAtom = 'object:mut-1';
 
-    let events;
-    if (adjective && noun) {
-      events = [
+      let events;
+      if (adjective && noun) {
+        events = [
+          {
+            relate: [
+              ['hasAdjectiveProperty', [objectAtom, adjective]],
+              ['hasNounProperty', [objectAtom, noun]],
+              ['locatedIn', [objectAtom, pgLocation]]
+            ]
+          }
+        ]
+      } else {
+        let possessedBy = world.firstWhich('possessedBy', objectAtom);
+        let locatedIn = world.firstWhich('locatedIn', objectAtom);
+        let unrelates = [];
+
+        if (possessedBy) {
+          unrelates.push(['possessedBy', [objectAtom, possessedBy]]);
+        }
+        if (locatedIn) {
+          unrelates.push(['locatedIn', [objectAtom, locatedIn]]);
+        }
+
+        events = [{
+          unrelate: unrelates
+        }]
+      }
+
+      return { events: events };
+    }
+  }),
+  new Observer({
+    stateConditions: [
+      ['object:vending-machine', 'amount', 3]
+    ],
+    modelCondition: {
+      not: { check: ['isPaidEnough', 'object:vending-machine'] }
+    },
+    effect: (newValue, oldValue, world) => {
+      const events = [
         {
           relate: [
-            ['hasAdjectiveProperty', [objectAtom, adjective]],
-            ['hasNounProperty', [objectAtom, noun]],
-            ['locatedIn', [objectAtom, pgLocation]]
+            ['isPaidEnough', ['object:vending-machine']]
           ]
         }
-      ]
-    } else {
-      let possessedBy = world.firstWhich('possessedBy', objectAtom);
-      let locatedIn = world.firstWhich('locatedIn', objectAtom);
-      let unrelates = [];
-
-      if (possessedBy) {
-        unrelates.push(['possessedBy', [objectAtom, possessedBy]]);
-      }
-      if (locatedIn) {
-        unrelates.push(['locatedIn', [objectAtom, locatedIn]]);
-      }
-
-      events = [{
-        unrelate: unrelates
-      }]
+      ];
+      return { events: events };
     }
-
-    return { events: events };
-  }
-});
-
-const vendingMachineObserver = new Observer({
-  stateConditions: [
-    ['object:vending-machine', 'amount', 3]
-  ],
-  modelCondition: {
-    not: { check: ['isPaidEnough', 'object:vending-machine'] }
-  },
-  effect: (newValue, oldValue, world) => {
-    const events = [
-      {
-        relate: [
-          ['isPaidEnough', ['object:vending-machine']]
-        ]
-      }
-    ];
-    return { events: events };
-  }
-});
+  })
+];
 
 const actionGenerators = [
   new MoveActionGenerator(),
   new TakeActionGenerator(),
-  //    new DropActionGenerator(),
   new EraseActionGenerator(),
   new WriteActionGenerator(),
   new UnlockActionGenerator(),
   new OpenActionGenerator(),
   new CloseActionGenerator(),
-  //    new ExamineActionGenerator(),
   new PayDollarActionGenerator(),
   new BuyChipsActionGenerator()
 ];
@@ -550,10 +549,7 @@ let world = new World({
   relations: relations,
   derivedRelations: derivedRelations,
   invariants: invariants,
-  observers: [
-    pgraphObserver,
-    vendingMachineObserver
-  ],
+  observers: observers,
   actionGenerators: actionGenerators,
   conceptTable: conceptTable,
   init: {
