@@ -13,13 +13,13 @@ import { ActionGenerator } from '../actionGenerator.js'
 import { indefArt } from './languageHelpers.js'
 
 
-export class NullAction extends Action {
+export class GameStartAction extends Action {
   constructor(tag, message) {
     super(
       {},
       {
-        tag: tag,
-        message: message
+        tag: '',
+        message: "You have returned home after a long journey. Standing on your balcony overlooking the city, you find that you crave chips and salsa. You're pretty sure there's a jar of salsa in that locked chest, but you can't remember where you left the key."
       }
     )
   }
@@ -28,7 +28,9 @@ export class NullAction extends Action {
 export class MoveAction extends Action {
   constructor(subject, destination) {
     super({
-      relate: [ ['locatedIn', new AtomList(subject, destination)] ]
+      relate: [
+        ['locatedIn', new AtomList(subject, destination)],
+      ]
     },
     {
       destinationName: (query, conceptTable) => {
@@ -127,6 +129,13 @@ export class EraseAction extends Action {
       tag: template`Erase the writing on the ${'subjectName'}`,
       beforeMessage: (query, conceptTable) => {
         const canSeeMutObj = query({check: ['isNear', ['object:mut-1', 'person:player']]});
+        const audibleRoom = query({
+          and: [
+            { which: ['canHearSoundFrom', 'person:player'] },
+            { which: ['isSiteOf', 'object:mut-1'] }
+          ]
+        });
+
         if (canSeeMutObj) {
           const mutObj = conceptTable.get('object:mut-1');
           return `In a flash of blue light, the ${mutObj.render('title', query, conceptTable)} vanishes!`
@@ -372,7 +381,7 @@ export class PayDollarAction extends Action {
         ['possesses', new AtomList('person:player', 'object:mut-1')],
       ],
       relate: [
-        ['locatedIn', new AtomList('object:mut-1', 'void')],
+        ['contains', new AtomList('object:cash-box', 'object:mut-1')],
       ],
     },
     {

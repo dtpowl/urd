@@ -13,11 +13,13 @@ import { Relation } from '../relation.js'
 
 import { template } from '../presentable.js'
 import { Concept } from '../concept.js'
+import { ConceptTable } from '../conceptTable.js'
 
 import { GameCoordinator } from './gameCoordinator.js'
 import { GamePresenter } from './gamePresenter.js'
 
 import {
+  GameStartAction,
   MoveActionGenerator,
   TakeActionGenerator,
   DropActionGenerator,
@@ -33,7 +35,6 @@ import {
 
 //
 
-const conceptTable = new SemanticMap();
 const mutObjectNames = {
   [SemanticSet.keyFor(new AtomList('adjective:paper', 'noun:money'))]: 'dollar bill',
   [SemanticSet.keyFor(new AtomList('adjective:paper', 'noun:bird'))]: 'origami crane',
@@ -44,182 +45,184 @@ const mutObjectNames = {
   [SemanticSet.keyFor(new AtomList('adjective:metal', 'noun:money'))]: 'golden coin',
   [SemanticSet.keyFor(new AtomList('adjective:metal', 'noun:key'))]: 'brass key'
 };
-([
-  new Concept('person:player', {
-    title: 'you'
-  }),
-  new Concept('void', {
-  }),
-  new Concept('object:knife', {
-    title: 'silver knife',
-    shortDescription: 'a silver knife'
-  }),
-  new Concept('object:jar', {
-    title: 'jar of salsa',
-    shortDescription: 'a jar of salsa'
-  }),
-  new Concept('scene:studio', {
-    title: 'The Studio',
-    shortDescription: 'the studio',
-    writingDescription: (query, conceptTable) => {
-      const firstWordAtom = query({firstWhich: ['hasWrittenOnFirst', 'object:pg']});
-      const secondWordAtom = query({firstWhich: ['hasWrittenOnSecond', 'object:pg']});
-      if (secondWordAtom) {
-        const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
-        const secondWord = conceptTable.get(secondWordAtom).wordForSlateDescription();
-        return ` On its slate is written "${firstWord} ${secondWord}."`
-      } else if (firstWordAtom) {
-        const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
-        return ` On its slate is written "${firstWord}."`
-      } else {
-        return '';
+
+const conceptTable = new ConceptTable(
+  [
+    new Concept('person:player', {
+      title: 'you'
+    }),
+    new Concept('object:knife', {
+      title: 'silver knife',
+      shortDescription: 'a silver knife'
+    }),
+    new Concept('object:jar', {
+      title: 'jar of salsa',
+      shortDescription: 'a jar of salsa'
+    }),
+    new Concept('scene:studio', {
+      title: 'The Studio',
+      shortDescription: 'the studio',
+      writingDescription: (query, conceptTable) => {
+        const firstWordAtom = query({firstWhich: ['hasWrittenOnFirst', 'object:pg']});
+        const secondWordAtom = query({firstWhich: ['hasWrittenOnSecond', 'object:pg']});
+        if (secondWordAtom) {
+          const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
+          const secondWord = conceptTable.get(secondWordAtom).wordForSlateDescription();
+          return ` On its slate is written "${firstWord} ${secondWord}."`
+        } else if (firstWordAtom) {
+          const firstWord = conceptTable.get(firstWordAtom).wordForSlateDescription();
+          return ` On its slate is written "${firstWord}."`
+        } else {
+          return '';
+        }
+      },
+      description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}`
+    }),
+    new Concept('scene:balcony', {
+      title: 'On the Balcony',
+      shortDescription: 'the balcony',
+      chestStatus: (query, conceptTable) => {
+        const open = query({not: { check: ['isClosed', 'object:chest'] }});
+        if (open) {
+          return 'open';
+        }
+
+        const locked = query({check: ['isLocked', 'object:chest']});
+        if (locked) {
+          return 'closed and locked';
+        } else {
+          return 'closed and unlocked';
+        }
+      },
+      description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. It is ${'chestStatus'}.`
+    }),
+    new Concept('scene:hallway', {
+      title: 'In the Hallway',
+      shortDescription: 'the hallway',
+      whitespace: (query, conceptTable, state) => {
+        const amount = state('object:vending-machine', 'amount');
+        const shouldShowPriceMessage = query({
+          and: [
+            { check: ['contains', ['object:vending-machine', 'object:chips']] },
+            { check: ['isClosed', ['object:vending-machine']] }
+          ]
+        });
+        if (amount != 0 || shouldShowPriceMessage) {
+          return '<br>';
+        } else {
+          return '';
+        }
+      },
+      vendingMachineStateMessage: (query, conceptTable, state) => {
+        const amount = state('object:vending-machine', 'amount');
+        if (amount == 0) {
+          return '';
+        } else {
+          return ` The vending machine's red LED display shows "$${amount}.00."`
+        }
+      },
+      chipsPriceMessage: (query, conceptTable, state) => {
+        const shouldShowMessage = query({
+          and: [
+            { check: ['contains', ['object:vending-machine', 'object:chips']] },
+            { check: ['isClosed', ['object:vending-machine']] }
+          ]
+        });
+        if (shouldShowMessage) {
+          return "A bag of tortilla chips costs three dollars.";
+        } else {
+          return "";
+        }
+      },
+      description: template`You are in the hallway of your apartment building. A vending machine stands against the wall.${'whitespace'}${'chipsPriceMessage'}${'vendingMachineStateMessage'}`
+    }),
+    new Concept('object:pg', {
+      title: 'poesiograph',
+      shortDescription: 'your poesiograph',
+      description: 'An elaborate device surmounted by a writing slate.',
+    }),
+    new Concept('object:vending-machine', {
+      title: 'vending machine',
+    }, {
+      amount: 0
+    }),
+    new Concept('object:cash-box', {
+      title: 'cash box'
+    }),
+
+    new Concept('object:mut-1', {
+      adjective: (query, conceptTable) => {
+        const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
+        return conceptTable.get(adjConcept).title();
+      },
+      noun: (query, conceptTable) => {
+        const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
+        return conceptTable.get(nounConcept).title();
+      },
+      title: (query, conceptTable) => {
+        const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
+        const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
+        const key = new AtomList(adjConcept, nounConcept);
+        return mutObjectNames[SemanticSet.keyFor(key)] || 'inscrutable lump of protomatter';
+      },
+      carryMessage: (query, conceptTable) => {
+        return `You pick up the ${this.title(query, conceptTable)}`;
       }
-    },
-    description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}`
-  }),
-  new Concept('scene:balcony', {
-    title: 'On the Balcony',
-    shortDescription: 'the balcony',
-    chestStatus: (query, conceptTable) => {
-      const open = query({not: { check: ['isClosed', 'object:chest'] }});
-      if (open) {
-        return 'open';
-      }
+    }),
 
-      const locked = query({check: ['isLocked', 'object:chest']});
-      if (locked) {
-        return 'closed and locked';
-      } else {
-        return 'closed and unlocked';
-      }
-    },
-    description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. It is ${'chestStatus'}.`
-  }),
-  new Concept('scene:hallway', {
-    title: 'In the Hallway',
-    shortDescription: 'the hallway',
-    whitespace: (query, conceptTable, state) => {
-      const amount = state('object:vending-machine', 'amount');
-      const shouldShowPriceMessage = query({
-        and: [
-          { check: ['contains', ['object:vending-machine', 'object:chips']] },
-          { check: ['isClosed', ['object:vending-machine']] }
-        ]
-      });
-      if (amount != 0 || shouldShowPriceMessage) {
-        return '<br><br>';
-      } else {
-        return '';
-      }
-    },
-    vendingMachineStateMessage: (query, conceptTable, state) => {
-      const amount = state('object:vending-machine', 'amount');
-      if (amount == 0) {
-        return '';
-      } else {
-        return ` The vending machine's red LED display shows "$${amount}.00."`
-      }
-    },
-    chipsPriceMessage: (query, conceptTable, state) => {
-      const shouldShowMessage = query({
-        and: [
-          { check: ['contains', ['object:vending-machine', 'object:chips']] },
-          { check: ['isClosed', ['object:vending-machine']] }
-        ]
-      });
-      if (shouldShowMessage) {
-        return "A bag of tortilla chips costs three dollars.";
-      } else {
-        return "";
-      }
-    },
-    description: template`You are in the hallway of your apartment building. A vending machine stands against the wall.${'whitespace'}${'chipsPriceMessage'}${'vendingMachineStateMessage'}`
-  }),
-  new Concept('object:pg', {
-    title: 'poesiograph',
-    shortDescription: 'your poesiograph',
-    description: 'An elaborate device surmounted by a writing slate.',
-  }),
-  new Concept('object:vending-machine', {
-    title: 'vending machine',
-  }, {
-    amount: 0
-  }),
+    new Concept('word:ka', {
+      title: 'the word ka',
+      wordForSlateDescription: 'ka',
+    }),
+    new Concept('adjective:paper', {
+      title: 'paper'
+    }),
+    new Concept('noun:key', {
+      title: 'key'
+    }),
 
-  new Concept('object:mut-1', {
-    adjective: (query, conceptTable) => {
-      const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
-      return conceptTable.get(adjConcept).title();
-    },
-    noun: (query, conceptTable) => {
-      const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
-      return conceptTable.get(nounConcept).title();
-    },
-    title: (query, conceptTable) => {
-      const adjConcept = query({firstWhich: ['hasAdjectiveProperty', 'object:mut-1']});
-      const nounConcept = query({firstWhich: ['hasNounProperty', 'object:mut-1']});
-      const key = new AtomList(adjConcept, nounConcept);
-      return mutObjectNames[SemanticSet.keyFor(key)] || 'inscrutable lump of protomatter';
-    },
-    carryMessage: (query, conceptTable) => {
-      return `You pick up the ${this.title(query, conceptTable)}`;
-    }
-  }),
+    new Concept('word:lo', {
+      title: 'the word lo',
+      wordForSlateDescription: 'lo',
+    }),
+    new Concept('adjective:glass', {
+      title: 'glass'
+    }),
+    new Concept('noun:money', {
+      title: 'coin'
+    }),
 
-  new Concept('word:ka', {
-    title: 'the word ka',
-    wordForSlateDescription: 'ka',
-  }),
-  new Concept('adjective:paper', {
-    title: 'paper'
-  }),
-  new Concept('noun:key', {
-    title: 'key'
-  }),
+    new Concept('word:beh', {
+      title: 'the word beh',
+      wordForSlateDescription: 'beh'
+    }),
+    new Concept('adjective:metal', {
+      title: 'metal'
+    }),
+    new Concept('noun:bird', {
+      title: 'bird'
+    }),
 
-  new Concept('word:lo', {
-    title: 'the word lo',
-    wordForSlateDescription: 'lo',
-  }),
-  new Concept('adjective:glass', {
-    title: 'glass'
-  }),
-  new Concept('noun:money', {
-    title: 'coin'
-  }),
+    new Concept('object:chest', {
+      title: 'wooden chest'
+    }),
 
-  new Concept('word:beh', {
-    title: 'the word beh',
-    wordForSlateDescription: 'beh'
-  }),
-  new Concept('adjective:metal', {
-    title: 'metal'
-  }),
-  new Concept('noun:bird', {
-    title: 'bird'
-  }),
+    new Concept('object:jar', {
+      title: 'jar of salsa'
+    }),
 
-  new Concept('object:chest', {
-    title: 'wooden chest'
-  }),
+    new Concept('object:chips', {
+      title: 'bag of tortilla chips'
+    }),
 
-  new Concept('object:jar', {
-    title: 'jar of salsa'
-  }),
-
-  new Concept('object:chips', {
-    title: 'bag of tortilla chips'
-  }),
-
-]).forEach((s) => {
-  conceptTable.set(new AtomList(s.atom), s);
-});
+  ]);
 
 const relations = [
   // movement and place
   ['locatedIn', 2],
   ['locusOf', 2],
   ['adjacentTo', 2],
+  ['isRoom', 1],
 
   // inventory
   ['canCarry', 2],
@@ -230,7 +233,6 @@ const relations = [
 
   // object properties
   ['isPgraph', 1],
-  //  ['exists', 1],
   ['isExaminable', 1],
   ['isLocked', 1],
   ['isClosed', 1],
@@ -292,6 +294,16 @@ let invariants = [
 
 // todo: are unary derived relations broken?
 let derivedRelations = [
+  [
+    'canHearSoundFrom', 2, (subject) => {
+      return {
+        or: [
+          { which: ['adjacentTo', { firstWhich: ['locatedIn', subject] }] },
+          { which: ['isNear', subject] },
+        ]
+      }
+    }
+  ],
   [
     'canBeUnlockedBy', 2, (subject) => {
       return {
@@ -377,6 +389,16 @@ let derivedRelations = [
         or: [
           { which: ['isColocatedWith', subject] },
           { anyWhich: ['openlyContains', { which: ['isColocatedWith', subject] }] }
+        ]
+      }
+    }
+  ],
+  [
+    'isSiteOf', 2, (subject) => {
+      return {
+        or: [
+          { which: ['locatedIn', subject] },
+          { anyWhich: ['locatedIn', { which: ['containedIn', subject] }] }
         ]
       }
     }
@@ -554,6 +576,10 @@ let world = new World({
   conceptTable: conceptTable,
   init: {
     relate: [
+      ['isRoom', ['scene:balcony']],
+      ['isRoom', ['scene:hallway']],
+      ['isRoom', ['scene:studio']],
+
       ['locatedIn', ['person:player', 'scene:balcony']],
       ['locatedIn', ['object:pg', 'scene:studio']],
 
@@ -563,6 +589,9 @@ let world = new World({
       ['locatedIn', ['object:vending-machine', 'scene:hallway']],
       ['contains', ['object:vending-machine', 'object:chips']],
       ['isClosed', ['object:vending-machine']],
+
+      ['locatedIn', ['object:cash-box', 'scene:hallway']],
+      ['isClosed', ['object:cash-box']],
 
       ['canBeOpenedAndClosedManually', ['object:chest']],
       ['isClosed', ['object:chest']],
@@ -596,7 +625,9 @@ let world = new World({
       ['isWrittenSecondOn', ['word:ka', 'object:pg']]
     ]
   }
-});
+}).applyAction(
+  new GameStartAction()
+)
 
 function init(window) {
   new GameCoordinator({
