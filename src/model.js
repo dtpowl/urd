@@ -374,27 +374,6 @@ export class Model {
     this._invariants.add(invariant);
   }
 
-  _assert(relationName, atoms) {
-    throw 'Unused?'; // todo
-
-    atoms = AtomList.from(atoms);
-
-    let relation = this._relations.get(relationName);
-    let cycle = new EventResolutionCycle(this);
-
-    this._performRelateCycle(relation, cycle, atoms);
-  }
-
-  _unrelate(relationName, atoms) {
-    throw 'Unused?'; // todo
-
-    atoms = AtomList.from(atoms);
-
-    let relation = this._relations.get(relationName);
-    let cycle = new EventResolutionCycle(this);
-    this._performUnrelateCycle(relation, cycle, atoms);
-  }
-
   _performRelateCycle(relation, cycle, atoms) {
     atoms = AtomList.from(atoms);
 
