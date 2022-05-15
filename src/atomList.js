@@ -1,4 +1,7 @@
-// monadic representation of one or more atoms
+// represents a vector one or more atoms
+// this is useful because:
+// 1.) it lets us implement the "query result" interface on this class
+// 2.) it lets us implement the "semantic set member" interface on this class
 export class AtomList {
   static isAtomList(arg) {
     return arg && arg.constructor && arg.constructor.name == 'AtomList';
@@ -49,17 +52,16 @@ export class AtomList {
     ];
   }
 
+  asString() {
+    return this._atoms.join(', ');
+  }
+
   // every type that can be a model query result must implement `identical`
   identical(otherAtomList) {
     if (!otherAtomList) { return false; }
     if (otherAtomList.constructor != AtomList) { return false; }
 
     return this._atoms.every((atom, i) => atom == otherAtomList._atoms[i]);
-  }
-
-  // bind returns a new AtomList
-  bind(cb) {
-    return new AtomList(this.map(cb));
   }
 
   // map returns an Array

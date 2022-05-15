@@ -127,8 +127,7 @@ export class Model {
     const resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
     resolvedAtoms.forEach((atom) => {
       if (!this._atoms.has(atom)) {
-        // todo: log atom name here
-        throw "Cannot evaluate predicate for unknown atom";
+        throw `Cannot evaluate predicate for unknown atom ${atom.asString()}`;
       }
     });
 
