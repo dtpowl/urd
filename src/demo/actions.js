@@ -128,17 +128,15 @@ export class EraseAction extends Action {
       },
       tag: template`Erase the writing on the ${'subjectName'}`,
       beforeMessage: (query, conceptTable) => {
-        const canSeeMutObj = query({check: ['isNear', ['object:mut-1', 'person:player']]});
-        const audibleRoom = query({
-          and: [
-            { which: ['canHearSoundFrom', 'person:player'] },
-            { which: ['isSiteOf', 'object:mut-1'] }
-          ]
-        });
+        const mutObj = conceptTable.get('object:mut-1');
 
-        if (canSeeMutObj) {
-          const mutObj = conceptTable.get('object:mut-1');
-          return `In a flash of blue light, the ${mutObj.render('title', query, conceptTable)} vanishes!`
+        if (query({check: ['canSee', ['person:player', 'object:mut-1']]})) {
+          return `<i>Zorp!</i> In a flash of blue light, the ${mutObj.render('title', query, conceptTable)} vanishes!`;
+
+        } else if (query({check: ['canHear', ['person:player', 'object:mut-1']]})) {
+          const location = conceptTable.get(query({ firstWhich: ['locatedIn', 'object:mut-1'] }));
+          return `You hear a muffled <i>zorp!</i> from the direction of ${location.render('shortDescription', query, conceptTable)}.`;
+
         } else {
           return null;
         }
@@ -298,6 +296,7 @@ export class UnlockActionGenerator extends ActionGenerator {
 export class OpenAction extends Action {
   constructor(object) {
     super({
+      relate: [ ['hasBeenOpenedAtLeastOnce', new AtomList(object)] ],
       unrelate: [ ['isClosed', new AtomList(object)] ]
     },
     {

@@ -94,7 +94,15 @@ const conceptTable = new ConceptTable(
           return 'closed and unlocked';
         }
       },
-      description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. It is ${'chestStatus'}.`
+      salsaHint: (query, conceptTable) => {
+        const showHint = query({not: {check: ['hasBeenOpenedAtLeastOnce', 'object:chest']}});
+        if (showHint) {
+          return "You think there might be salsa in it. "
+        } else {
+          return '';
+        }
+      },
+      description: template`You stand on a balcony overlooking the city. A wooden chest is here. It is fitted with shiny brass hasps and a brass lock. ${'salsaHint'}It is ${'chestStatus'}.`
     }),
     new Concept('scene:hallway', {
       title: 'In the Hallway',
@@ -220,7 +228,7 @@ const conceptTable = new ConceptTable(
 const relations = [
   // movement and place
   ['locatedIn', 2],
-  ['locusOf', 2],
+  ['locationOf', 2],
   ['adjacentTo', 2],
   ['isRoom', 1],
 
@@ -239,6 +247,7 @@ const relations = [
   ['canBeOpenedAndClosedManually', 1],
   ['unlockableByKeyType', 2],
   ['keyTypeUnlocks', 2],
+  ['hasBeenOpenedAtLeastOnce', 1],
 
   // poesiograph mechanics
   ['knowsWord', 2],
@@ -268,7 +277,7 @@ let invariants = [
   [['locatedIn'], Unique],
   [['possessedBy'], Unique],
 
-  [['locusOf', 'locatedIn'], Converse],
+  [['locationOf', 'locatedIn'], Converse],
   [['adjacentTo'], Symmetric],
 
   [['possesses', 'possessedBy'], Converse],
@@ -295,12 +304,50 @@ let invariants = [
 // todo: are unary derived relations broken?
 let derivedRelations = [
   [
-    'canHearSoundFrom', 2, (subject) => {
+    'canHear', 2, (subject) => {
       return {
+        ///
         or: [
-          { which: ['adjacentTo', { firstWhich: ['locatedIn', subject] }] },
-          { which: ['isNear', subject] },
+          {
+            // located in the same room as the subject
+            anyWhich: [
+              'locationOf',
+              { which: ['locatedIn', subject] }
+            ]
+          },
+          {
+            // contained in something located in the same room as the subject
+            anyWhich: [
+              'contains',
+              {
+                anyWhich: [
+                  'locationOf',
+                  { which: ['locatedIn', subject] }
+                ]
+              }
+            ]
+          },
+          {
+            // located in a room adjacent to the room the subject is in
+            anyWhich: [
+              'locationOf',
+              { anyWhich: ['adjacentTo', { which: ['locatedIn', subject] }] }
+            ]
+          },
+          {
+            // contained in something located in a room adjacent to the room the subject is in
+            anyWhich: [
+              'contains',
+              {
+                anyWhich: [
+                  'locationOf',
+                  { anyWhich: ['adjacentTo', { which: ['locatedIn', subject] }] }
+                ]
+              }
+            ]
+          }
         ]
+        ///
       }
     }
   ],
@@ -377,28 +424,28 @@ let derivedRelations = [
     }
   ],
   [
-    'isColocatedWith', 2, (subject) => {
+    'inaccessiblyContains', 2, (subject) => {
       return {
-        which: ['locusOf', { firstWhich: [ 'locatedIn', subject ] }]
-      }
-    }
-  ],
-  [
-    'isNear', 2, (subject) => {
-      return {
-        or: [
-          { which: ['isColocatedWith', subject] },
-          { anyWhich: ['openlyContains', { which: ['isColocatedWith', subject] }] }
+        and: [
+          { check: [ 'isClosed', subject ] },
+          { which: [ 'contains', subject ] },
         ]
       }
     }
   ],
   [
-    'isSiteOf', 2, (subject) => {
+    'isColocatedWith', 2, (subject) => {
+      return {
+        which: ['locationOf', { firstWhich: [ 'locatedIn', subject ] }]
+      }
+    }
+  ],
+  [
+    'canSee', 2, (subject) => {
       return {
         or: [
-          { which: ['locatedIn', subject] },
-          { anyWhich: ['locatedIn', { which: ['containedIn', subject] }] }
+          { which: ['isColocatedWith', subject] },
+          { anyWhich: ['openlyContains', { which: ['isColocatedWith', subject] }] }
         ]
       }
     }
@@ -412,7 +459,8 @@ let derivedRelations = [
     'canTake', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', subject] },
+          { not: { anyWhich: ['contains', { subjects: 'isClosed' }] } },
+          { which: ['canSee', subject] },
           { which: [ 'canCarry', subject ] },
           { not: { which: [ 'possesses', subject ] } }
         ]
@@ -423,7 +471,7 @@ let derivedRelations = [
     'canAttemptUnlock', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', subject] },
+          { which: ['canSee', subject] },
           { subjects: 'isLocked' }
         ]
       }
@@ -433,7 +481,7 @@ let derivedRelations = [
     'canWriteOn', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', subject] },
+          { which: ['canSee', subject] },
           { subjects: 'isPgraph' }
         ]
       }
@@ -466,7 +514,7 @@ let derivedRelations = [
           { check: ['possessedBy', ['object:mut-1', subject]] },
           { check: ['hasAdjectiveProperty', ['object:mut-1', 'adjective:paper']] },
           { check: ['hasNounProperty', ['object:mut-1', 'noun:money']] },
-          { which: ['isNear', subject] }
+          { which: ['canSee', subject] }
         ]
       }
     }
@@ -475,7 +523,7 @@ let derivedRelations = [
     'canGetChipsFrom', 2, (subject) => {
       return {
         and: [
-          { which: ['isNear', subject] },
+          { which: ['canSee', subject] },
           { subjects: 'isPaidEnough' },
           { subjects: 'isClosed' },
         ]
@@ -518,6 +566,7 @@ const observers = [
       } else {
         let possessedBy = world.firstWhich('possessedBy', objectAtom);
         let locatedIn = world.firstWhich('locatedIn', objectAtom);
+        let containedIn = world.firstWhich('containedIn', objectAtom);
         let unrelates = [];
 
         if (possessedBy) {
@@ -525,6 +574,9 @@ const observers = [
         }
         if (locatedIn) {
           unrelates.push(['locatedIn', [objectAtom, locatedIn]]);
+        }
+        if (containedIn) {
+          unrelates.push(['containedIn', [objectAtom, containedIn]]);
         }
 
         events = [{
