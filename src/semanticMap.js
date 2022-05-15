@@ -3,10 +3,9 @@
 // all object values must implement deep copy as `clone`. (immutable
 // types may return self from clone)
 
-// todo: better name? also a better name for SemanticSet
-
 import { SemanticSet } from './semanticSet.js'
 
+// todo: better name? also a better name for SemanticSet
 export class SemanticMap {
   constructor(_map) {
     this._map = _map || new Map();

@@ -38,7 +38,6 @@ export class Observer {
         return this._effect(newValue, oldValue, model);
       }
     } else {
-      debugger
       return this._effect(null, null, model);
     }
 

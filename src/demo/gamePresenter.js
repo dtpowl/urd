@@ -43,8 +43,7 @@ export class GamePresenter {
     if (lastAction.failed) {
       return lastAction.render('failMessage', world.queryFn(), this._conceptTable, world.stateFn());
     }
-    // todo: stop accessing private attr _parent
-    const beforeMessage = lastAction.render('beforeMessage', world._parent.queryFn(), this._conceptTable);
+    const beforeMessage = lastAction.render('beforeMessage', world.parent.queryFn(), this._conceptTable);
     if (beforeMessage) {
       return beforeMessage;
     }

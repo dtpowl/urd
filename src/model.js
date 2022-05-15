@@ -107,7 +107,7 @@ export class Model {
   }
 
   _resolveQueryArgument(queryArgument) {
-    // todo: better way to determine if something is a subquery
+    // if it's an object, it's a subquery so we should run it.
     if (queryArgument.constructor.name == 'Object') {
       return this.query(queryArgument);
     } else {
@@ -123,25 +123,8 @@ export class Model {
     return queryArguments.map((qa) => this._resolveQueryArgument(qa));
   }
 
-  // todo: is this needed or should we be using _resolveQueryArguments instead
-  atoms(subqueries) {
-    if (!Array.isArray(subqueries)) {
-      return this.atoms([subqueries])
-    }
-
-    return new AtomList(
-      subqueries.map((atomOrQuery) => {
-        if (atomOrQuery.constructor.name == 'Object') {
-          return this.query(atomOrQuery);
-        } else {
-          return atomOrQuery;
-        }
-      })
-    );
-  }
-
   check(relationName, atoms) {
-    const resolvedAtoms = this.atoms(atoms);
+    const resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
     resolvedAtoms.forEach((atom) => {
       if (!this._atoms.has(atom)) {
         // todo: log atom name here

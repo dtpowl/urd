@@ -14,6 +14,11 @@ export class World {
     init
   }, _events=[], _parent, _lastAction) {
     this._uid = Uid.next();
+    if (_parent) {
+      this._lineageId = _parent.lineageId;
+    } else {
+      this._lineageId = this._uid;
+    }
     this._atoms = atoms || Array.from(conceptTable.mapValues((v) => v.atom));
     this._relations = relations;
     this._derivedRelations = derivedRelations;
@@ -51,7 +56,9 @@ export class World {
 
   // accessor methods
   get uid() { return this._uid; }
+  get lineageId() { return this._lineageId; }
   get lastAction() { return this._lastAction; }
+  get parent() { return this._parent; }
   // end accessor methods
 
   getConcept(atom) {

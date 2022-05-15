@@ -51,10 +51,6 @@ const conceptTable = new ConceptTable(
     new Concept('person:player', {
       title: 'you'
     }),
-    new Concept('object:knife', {
-      title: 'silver knife',
-      shortDescription: 'a silver knife'
-    }),
     new Concept('object:jar', {
       title: 'jar of salsa',
       shortDescription: 'a jar of salsa'
@@ -82,12 +78,12 @@ const conceptTable = new ConceptTable(
       title: 'On the Balcony',
       shortDescription: 'the balcony',
       chestStatus: (query, conceptTable) => {
-        const open = query({not: { check: ['isClosed', 'object:chest'] }});
+        const open = query({not: { check: ['isClosed', ['object:chest']] }});
         if (open) {
           return 'open';
         }
 
-        const locked = query({check: ['isLocked', 'object:chest']});
+        const locked = query({check: ['isLocked', ['object:chest']]});
         if (locked) {
           return 'closed and locked';
         } else {
@@ -95,9 +91,9 @@ const conceptTable = new ConceptTable(
         }
       },
       salsaHint: (query, conceptTable) => {
-        const showHint = query({not: {check: ['hasBeenOpenedAtLeastOnce', 'object:chest']}});
+        const showHint = query({not: {check: ['hasBeenOpenedAtLeastOnce', ['object:chest']]}});
         if (showHint) {
-          return "You think there might be salsa in it. "
+          return 'You think there might be salsa in it. ';
         } else {
           return '';
         }
@@ -417,7 +413,7 @@ let derivedRelations = [
     'openlyContains', 2, (subject) => {
       return {
         and: [
-          { not: { check: [ 'isClosed', subject ] } },
+          { not: { check: [ 'isClosed', [subject] ] } },
           { which: [ 'contains', subject ] },
         ]
       }
@@ -427,7 +423,7 @@ let derivedRelations = [
     'inaccessiblyContains', 2, (subject) => {
       return {
         and: [
-          { check: [ 'isClosed', subject ] },
+          { check: [ 'isClosed', [subject] ] },
           { which: [ 'contains', subject ] },
         ]
       }
@@ -592,7 +588,7 @@ const observers = [
       ['object:vending-machine', 'amount', 3]
     ],
     modelCondition: {
-      not: { check: ['isPaidEnough', 'object:vending-machine'] }
+      not: { check: ['isPaidEnough', ['object:vending-machine']] }
     },
     effect: (newValue, oldValue, world) => {
       const events = [
@@ -650,7 +646,6 @@ let world = new World({
       ['isLocked', ['object:chest']],
 
       ['canCarry', ['person:player', 'object:mut-1']],
-      ['canCarry', ['person:player', 'object:knife']],
       ['canCarry', ['person:player', 'object:jar']],
       ['canCarry', ['person:player', 'object:chips']],
 

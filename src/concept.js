@@ -1,11 +1,12 @@
 import { Presentable } from './presentable.js'
 import { SemanticMap } from './semanticMap.js'
+import { SortedList } from './sortedList.js'
 
 export class Concept extends Presentable {
   constructor(atom, props, state) {
     super(props);
-    // todo: prevent one concept from belonging to multiple world lineages?
     this._atom = atom;
+    this._worldLineageId = null; // will populate when committing a world
     if (state) {
       this._hasState = true;
       this._initState = new Map();
@@ -13,8 +14,7 @@ export class Concept extends Presentable {
         this._initState.set(k, state[k]);
       }
       this._stateTable = new Map();
-      // todo: typed array here
-      this._committedWorldIds = []; // DESCENDING ORDER
+      this._committedWorldIds = new SortedList();
     } else {
       this._hasState = false;
     }
@@ -47,9 +47,7 @@ export class Concept extends Presentable {
       throw "Can't get state of undeclared key!";
     }
 
-    // todo: use bsearch here.
-    // note that the array is in descending order
-    const bestWorldId = this._committedWorldIds.find((id) => id <= world.uid);
+    const bestWorldId = this._committedWorldIds.largestNotExceeding(world.uid);
     if (bestWorldId) {
       return this._stateTable.get(bestWorldId).get(key);
     } else {
@@ -58,7 +56,7 @@ export class Concept extends Presentable {
   }
 
   commitWorld(world) {
-    const maxWorldId = this._committedWorldIds[0];
+    const maxWorldId = this._committedWorldIds.max();
     const currentState = this._stateTable.get(maxWorldId);
     if (!this._stateTable.has(world.uid)) {
       this._stateTable.set(world.uid, new Map());
@@ -78,6 +76,11 @@ export class Concept extends Presentable {
       }
     }
 
-    this._committedWorldIds.unshift(world.uid);
+    if (this._worldLineageId && this._worldLineageId != world.lineageId) {
+      throw "Can't commit worlds from multiple lineages to the same concept!";
+    } else if (!this._worldLineageId) {
+      this._worldLineageId = world.lineageId;
+    }
+    this._committedWorldIds.add(world.uid);
   }
 }
