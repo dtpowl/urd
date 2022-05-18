@@ -36,13 +36,20 @@ export class Model {
 
     this._derivedRelationsInput = derivedRelations; // this will be used to clone the Model
     this._derivedRelationArities = new Map();
-    this._derivedRelationQueryMakers = new Map();
+    this._multiaryDerivedRelationQueryMakers = new Map();
+    this._unaryDerivedRelationQueryMakers = new Map();
     derivedRelations.forEach((tuple) => {
-      let name = tuple[0];
-      let arity = tuple[1];
-      let queryMaker = tuple[2];
+      const name = tuple[0];
+      const arity = tuple[1];
+      const queryMaker = tuple[2];
       this._derivedRelationArities.set(name, arity);
-      this._derivedRelationQueryMakers.set(name, queryMaker);
+      if (arity > 1) {
+        this._multiaryDerivedRelationQueryMakers.set(name, queryMaker);
+      } else if (arity == 1) {
+        this._unaryDerivedRelationQueryMakers.set(name, queryMaker);
+      } else {
+        throw `Invalid arity ${arity} for derived relation ${name}`;
+      }
     });
 
     this._invariantInput = invariants; // this will be used to clone the Model
@@ -59,7 +66,7 @@ export class Model {
   //
 
   clone() {
-    let clonedRelationTable = new Map();
+    const clonedRelationTable = new Map();
     for (const entry of this._relations) {
       clonedRelationTable.set(entry[0], entry[1].clone());
     }
@@ -84,7 +91,7 @@ export class Model {
     }
 
     // translate statements into trigger format
-    let triggers = {};
+    const triggers = {};
     if (statements.relate) {
       triggers.relate = statements.relate.map((statement) => {
         return [
@@ -102,7 +109,7 @@ export class Model {
         ];
       });
     }
-    let cycle = new EventResolutionCycle(this);
+    const cycle = new EventResolutionCycle(this);
     cycle.addTriggers(triggers);
   }
 
@@ -145,24 +152,32 @@ export class Model {
       throw `wrong arity for relation ${relationName}`;
     }
 
+    if (derivedRelationArity == 1) {
+//      return this.
+    }
+
     const subject = resolvedAtoms.first();
     const objects = resolvedAtoms.rest();
     return this.which(relationName, subject).has(objects);
   }
 
   subjects(relationName) {
-    let relation = this._relations.get(relationName);
+    const relation = this._relations.get(relationName);
     if (relation) {
       return relation.subjects();
     };
 
-    // for derived relations, there's no speedy way to look up subjects. we just have to exhaust
-    // todo: think about this
-    let derivedRelationQueryMaker = this._derivedRelationQueryMakers.get(relationName);
-    if (derivedRelationQueryMaker) {
+    // for derived relations, we just have to exhaust
+    const derivedMultiaryRelationQueryMaker = this._multiaryDerivedRelationQueryMakers.get(relationName);
+    if (derivedMultiaryRelationQueryMaker) {
       return this._atoms.filter((atom) => {
-        return this.query(derivedRelationQueryMaker(atom)).length > 0;
+        return this.query(derivedMultiaryRelationQueryMaker(atom)).size > 0;
       });
+    }
+
+    const derivedUnaryRelationQueryMaker = this._unaryDerivedRelationQueryMakers.get(relationName);
+    if (derivedUnaryRelationQueryMaker) {
+      return this._atoms.filter((atom) => this.query(derivedUnaryRelationQueryMaker(atom)));
     }
 
     throw `unknown relation ${relationName}`;
@@ -174,14 +189,14 @@ export class Model {
   }
 
   propositions(relationName) {
-    let relation = this._relations.get(relationName);
+    const relation = this._relations.get(relationName);
     if (relation) {
       return relation.propositions();
     }
 
     // for derived relations, there's no speedy way to look up subjects. we just have to exhaust
     // todo: think about this
-    let derivedRelationQueryMaker = this._derivedRelationQueryMakers.get(relationName);
+    const derivedRelationQueryMaker = this._multiaryDerivedRelationQueryMakers.get(relationName);
     if (derivedRelationQueryMaker) {
       return new SemanticSet(
         this._atoms.arrayMap((atom) => {
@@ -203,21 +218,27 @@ export class Model {
 
   which(relationName, subject) {
     if (subject.constructor.name == 'Object') {
-      let queryResult = this.query(subject) || [];
+      const queryResult = this.query(subject) || [];
       if (typeof queryResult == 'boolean' || queryResult.length > 1) {
         throw "`which` query requires at most one subject atom";
       }
       return this.which(relationName, queryResult);
     }
 
-    let relation = this._relations.get(relationName);
-    if (relation) {
+    const relation = this._relations.get(relationName);
+    if (relation && relation.arity > 1) {
       return relation.relatedObjectsForSubject(subject);
-    };
+    } else if (relation && relation.arity == 1) {
+      throw `invalid query type 'which' for relation ${relationName} of arity 1`;
+    }
 
-    let derivedRelationQueryMaker = this._derivedRelationQueryMakers.get(relationName);
+    const derivedRelationQueryMaker = this._multiaryDerivedRelationQueryMakers.get(relationName);
     if (derivedRelationQueryMaker) {
       return this.query(derivedRelationQueryMaker(subject));
+    }
+
+    if (this._unaryDerivedRelationQueryMakers.get(relationName)) {
+      throw `invalid query type 'which' for relation ${relationName} of arity 1`;
     }
 
     throw `unknown relation ${relationName}`;
@@ -245,13 +266,13 @@ export class Model {
   }
 
   not(queryArg) {
-    let subqVal = this.query(queryArg);
+    const subqVal = this.query(queryArg);
     if (subqVal == null || typeof subqVal == 'boolean') { return !subqVal; }
     return subqVal.invert(); // SemanticSet
   }
 
   or(queryArg) {
-    let subqVals = this._resolveQueryArguments(queryArg);
+    const subqVals = this._resolveQueryArguments(queryArg);
 
     if (subqVals.length == 0) {
       return new SemanticSet();
@@ -269,11 +290,11 @@ export class Model {
   }
 
   and(queryArg) {
-    let subqVals = queryArg.map((subq) => this.query(subq));
-    let booleanReduction = subqVals.
+    const subqVals = queryArg.map((subq) => this.query(subq));
+    const booleanReduction = subqVals.
         filter((x) => typeof x == 'boolean').
         reduce((x, ac) => ac && x, true);
-    let iterableSubqVals = subqVals.
+    const iterableSubqVals = subqVals.
         filter((x) => typeof x != 'boolean');
     if (iterableSubqVals.length === 0) {
       return booleanReduction;
@@ -285,9 +306,9 @@ export class Model {
   }
 
   query({ and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent }) {
-    let argCount = [and, or, not, which, check].filter((x) => Boolean(x));
+    const argCount = [and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent].filter((x) => Boolean(x));
     if (argCount > 1) {
-      throw "query accepts only one of: and, or, not, which, firstWhich, check, subjects, propositions";
+      throw "query accepts exactly one of: and, or, not, which, firstWhich, check, subjects, propositions, parent";
     }
 
     let key;
@@ -346,13 +367,13 @@ export class Model {
   }
 
   _addRelation(name, arity) {
-    let relation = new Relation(name, arity);
+    const relation = new Relation(name, arity);
     this._relations.set(name, relation);
   }
 
   _addInvariant(relationNames, type) {
-    let relations = relationNames.map((name) => this._relations.get(name));
-    let invariant = new type(...relations);
+    const relations = relationNames.map((name) => this._relations.get(name));
+    const invariant = new type(...relations);
     this._invariants.add(invariant);
   }
 
@@ -360,14 +381,14 @@ export class Model {
     atoms = AtomList.from(atoms);
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.beforeRelate(relation, atoms);
+      const triggers = invariant.beforeRelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
 
     relation.relate(atoms);
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.afterRelate(relation, atoms);
+      const triggers = invariant.afterRelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
   }
@@ -376,14 +397,14 @@ export class Model {
     atoms = AtomList.from(atoms);
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.beforeUnrelate(relation, atoms);
+      const triggers = invariant.beforeUnrelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
 
     relation.unrelate(atoms);
 
     this._invariants.forEach((invariant) => {
-      let triggers = invariant.afterUnrelate(relation, atoms);
+      const triggers = invariant.afterUnrelate(relation, atoms);
       cycle.addTriggers(triggers);
     });
   }

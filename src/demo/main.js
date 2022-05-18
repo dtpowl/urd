@@ -297,12 +297,15 @@ let invariants = [
   [['keyTypeUnlocks', 'unlockableByKeyType'], Converse]
 ];
 
-// todo: are unary derived relations broken?
 let derivedRelations = [
+  [
+    'testUnary', 1, (subject) => {
+      return { not: { check: ['isPgraph', [subject]] } }
+    }
+  ],
   [
     'canHear', 2, (subject) => {
       return {
-        ///
         or: [
           {
             // located in the same room as the subject
@@ -343,7 +346,6 @@ let derivedRelations = [
             ]
           }
         ]
-        ///
       }
     }
   ],
@@ -355,8 +357,8 @@ let derivedRelations = [
           { anyWhich: [
             'isAdjectivePropertyOf', {
               which: ['unlockableByKeyType', subject]
-            }
-          ] }
+            } ]
+          }
         ]
       }
     }

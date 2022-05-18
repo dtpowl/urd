@@ -5,7 +5,6 @@ import { Unique, Symmetric } from '../invariant.js';
 import { World } from '../world.js'
 import { Observer } from '../observer.js'
 import { Action } from '../action.js'
-import { Transitor } from '../transitor.js'
 import { Coordinator } from '../coordinator.js'
 
 import { template } from '../presentable.js'

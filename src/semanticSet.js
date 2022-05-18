@@ -23,16 +23,12 @@
 // todo: better name?
 // todo: immutable version of this?
 
-// todo: uid needed?
-//import { Uid } from './uid.js'
-
 export class SemanticSet {
   static isSemanticSet(arg) {
     return arg.constructor == this;
   }
 
   constructor (iterable, {inverted, _map}={})  {
-//    this._uid = Uid.next();
     this._map = _map || new Map();
 
     // add the elements before setting the inverted flag
@@ -45,8 +41,6 @@ export class SemanticSet {
     this._inverted = Boolean(inverted);
     this[Symbol.iterator] = () => this._map.values();
   }
-
-//  get uid() { return this._uid; }
 
   invert() {
     let clonedValues = Array.from(this._map.values()).map((x) => {

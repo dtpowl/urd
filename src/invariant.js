@@ -90,10 +90,10 @@ export class Unique extends Invariant {
   beforeRelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms.first();
-    let objectAtoms = atoms.rest();
-    let existingSaturations = relation.relatedObjectsForSubject(subject);
-    let output = {
+    const subject = atoms.first();
+    const objectAtoms = atoms.rest();
+    const existingSaturations = relation.relatedObjectsForSubject(subject);
+    const output = {
       unrelate: []
     };
     existingSaturations.forEach((existingObjectAtoms) => {
@@ -114,8 +114,8 @@ export class Symmetric extends Invariant {
   afterRelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms.first();
-    let object = atoms.rest()
+    const subject = atoms.first();
+    const object = atoms.rest()
     return {
       relate: [ [this._relation, [object, subject]] ]
     };
@@ -124,8 +124,8 @@ export class Symmetric extends Invariant {
   afterUnrelate(relation, atoms) {
     if (relation != this._relation) { return {}; }
 
-    let subject = atoms.first();
-    let object = atoms.rest();
+    const subject = atoms.first();
+    const object = atoms.rest();
     return {
       unrelate: [ [this._relation, [object, subject]] ]
     };
@@ -167,8 +167,8 @@ export class Supervenient extends Invariant {
   }
 
   afterRelate(relation, atoms) {
-    let subject = atoms.first();
-    let objects = atoms.rest();
+    const subject = atoms.first();
+    const objects = atoms.rest();
 
     if (relation != this._locatedIn) { return {}; }
 

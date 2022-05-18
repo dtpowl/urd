@@ -1,18 +1,18 @@
 import { Uid } from './uid.js'
 import { SemanticSet } from './semanticSet.js'
+import { SemanticMultiset } from './semanticMultiset.js'
 import { AtomList } from './atomList.js'
 
 export class Relation {
-  constructor(name, arity, defaultValue=false, _table=null) {
+  constructor(name, arity, defaultValue=false, _table=null, _subjectCache=null) {
     this._name = name;
-//    this._uid = Uid.next();
     this._arity = arity;
     this._defaultValue = defaultValue;
     this._table = _table || new Map();
   }
+
   // accessor methods
   get name() { return this._name; }
-//  get uid() { return this._uid; }
   get category() { return 'Relation'; }
   get arity() { return this._arity; }
   get defaultValue() { return this._defaultValue; }
@@ -30,7 +30,6 @@ export class Relation {
   }
 
   subjects() {
-    // todo: if we tracked subjects in a multiset, we wouldn't need to recalc this every time
     let asAtomLists = new SemanticSet();
     for (const entry of this._table) {
       if (entry[1].size > 0) {
