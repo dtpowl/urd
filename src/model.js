@@ -132,11 +132,7 @@ export class Model {
 
   check(relationName, atoms) {
     let resolvedAtoms;
-    try {
-      resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
-    } catch {
-      debugger
-    }
+    resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
     resolvedAtoms.forEach((atom) => {
       if (!this._atoms.has(atom)) {
         throw `Cannot evaluate predicate for unknown atom ${atom.asString()}`;

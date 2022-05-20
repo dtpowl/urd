@@ -4,7 +4,9 @@ import {
   Symmetric, Supervenient,
   Converse, Mutex, Implies
 } from '../invariant.js';
-import { Observer } from '../observer.js'
+
+import { ModelObserver } from '../modelObserver.js'
+import { StateObserver } from '../stateObserver.js'
 import { SemanticSet } from '../semanticSet.js'
 import { SemanticMap } from '../semanticMap.js'
 
@@ -547,8 +549,8 @@ let derivedRelations = [
   ]
 ];
 
-const observers = [
-  new Observer({
+const modelObservers = [
+  new ModelObserver({
     query: {
       or: [
         { propositions: 'hasWrittenOnFirst' },
@@ -601,14 +603,13 @@ const observers = [
 
       return { events: events };
     }
-  }),
-  new Observer({
+  })
+];
+const stateObservers = [
+  new StateObserver({
     stateConditions: [
       ['object:vending-machine', 'amount', 3]
     ],
-    modelCondition: {
-      not: { check: ['isPaidEnough', ['object:vending-machine']] }
-    },
     effect: (newValue, oldValue, world) => {
       const events = [
         {
@@ -638,7 +639,8 @@ let world = new World({
   relations: relations,
   derivedRelations: derivedRelations,
   invariants: invariants,
-  observers: observers,
+  modelObservers: modelObservers,
+  stateObservers: stateObservers,
   actionGenerators: actionGenerators,
   conceptTable: conceptTable,
   init: {
