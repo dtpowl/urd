@@ -215,10 +215,13 @@ const conceptTable = new ConceptTable(
       title: 'jar of salsa'
     }),
 
+    new Concept('object:lid', {
+      title: 'salsa jar lid'
+    }),
+
     new Concept('object:chips', {
       title: 'bag of tortilla chips'
     }),
-
   ]);
 
 const relations = [
@@ -240,7 +243,10 @@ const relations = [
   ['isExaminable', 1],
   ['isLocked', 1],
   ['isClosed', 1],
-  ['canBeOpenedAndClosedManually', 1],
+
+  ['canBeOpenedManually', 1],
+  ['canBeClosedManually', 1],
+
   ['unlockableByKeyType', 2],
   ['keyTypeUnlocks', 2],
   ['hasBeenOpenedAtLeastOnce', 1],
@@ -255,6 +261,11 @@ const relations = [
 
   // vending machine mechanics
   ['isPaidEnough', 1],
+
+  // food container mechanics
+  ['hasLid', 2],
+  ['isMessyWhenOpen', 1],
+  ['isPlacedUpon', 2],
 
   // magic word semantics
   ['hasAdjectiveMeaning', 2],
@@ -280,7 +291,7 @@ let invariants = [
   [['locatedIn', 'possesses'], Supervenient],
 
   [['contains', 'containedIn'], Converse],
-  [['locatedIn', 'contains'], Supervenient],
+//  [['locatedIn', 'contains'], Supervenient],
 
   [['isWrittenFirstOn', 'hasWrittenOnFirst'], Converse],
   [['isWrittenSecondOn', 'hasWrittenOnSecond'], Converse],
@@ -298,11 +309,6 @@ let invariants = [
 ];
 
 let derivedRelations = [
-  [
-    'testUnary', 1, (subject) => {
-      return { not: { check: ['isPgraph', [subject]] } }
-    }
-  ],
   [
     'canHear', 2, (subject) => {
       return {
@@ -379,13 +385,24 @@ let derivedRelations = [
     }
   ],
   [
+    'handsAreFullWith', 2, (subject) => {
+      return {
+          and: [
+            { which: ['possesses', subject] },
+            { subjects: 'isMessyWhenOpen' },
+            { not: { subjects: 'isClosed' } }
+          ]
+      }
+    }
+  ],
+  [
     'canOpen', 2, (subject) => {
       return {
         and: [
           { which: [ 'isColocatedWith', subject ] },
-          { subjects: 'canBeOpenedAndClosedManually' },
+          { subjects: 'canBeOpenedManually' },
           { subjects: 'isClosed' },
-          { not: { subjects: 'isLocked' } },
+          { not: { subjects: 'isLocked' } }
         ]
       }
     }
@@ -395,7 +412,7 @@ let derivedRelations = [
       return {
         and: [
           { which: [ 'isColocatedWith', subject ] },
-          { subjects: 'canBeOpenedAndClosedManually' },
+          { subjects: 'canBeClosedManually' },
           { not: { subjects: 'isClosed' } },
         ]
       }
@@ -643,7 +660,21 @@ let world = new World({
       ['locatedIn', ['object:cash-box', 'scene:hallway']],
       ['isClosed', ['object:cash-box']],
 
-      ['canBeOpenedAndClosedManually', ['object:chest']],
+      ['canBeOpenedManually', ['object:chest']],
+      ['canBeClosedManually', ['object:chest']],
+
+      ['canBeOpenedManually', ['object:jar']],
+      ['canBeClosedManually', ['object:jar']],
+      ['isClosed', ['object:jar']],
+
+      ['canBeOpenedManually', ['object:chips']],
+      ['isClosed', ['object:chips']],
+
+      ['isMessyWhenOpen', ['object:chips']],
+      ['isMessyWhenOpen', ['object:jar']],
+
+      ['hasLid', ['object:jar', 'object:lid']],
+
       ['isClosed', ['object:chest']],
       ['isLocked', ['object:chest']],
 

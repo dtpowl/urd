@@ -43,7 +43,7 @@ export class MoveAction extends Action {
   }
 }
 export class MoveActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     let destinationAtoms = world.which('canGoTo', 'person:player');
     return destinationAtoms.arrayMap((destinationAtom) => {
       return new MoveAction('person:player', destinationAtom);
@@ -77,7 +77,7 @@ export class TakeAction extends Action {
   }
 }
 export class TakeActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     let takeable = world.which('canTake', 'person:player');
     return takeable.arrayMap((takeableAtom) => {
       return new TakeAction('person:player', takeableAtom);
@@ -103,7 +103,7 @@ export class DropAction extends Action {
   }
 }
 export class DropActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     let heldObjects = world.which('possesses', 'person:player');
     return heldObjects.arrayMap((heldAtom) => {
       return new DropAction('person:player', heldAtom);
@@ -145,7 +145,7 @@ export class EraseAction extends Action {
   }
 }
 export class EraseActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     let writeableThings = world.which('canWriteOn', 'person:player');
     return writeableThings.arrayMap((thing) => {
       let firstWord = world.firstWhich('hasWrittenOnFirst', thing);
@@ -218,7 +218,7 @@ export class WriteNounAction extends Action {
   }
 }
 export class WriteActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     let writeableThings = world.which('canWriteOn', 'person:player');
     let currentFirstWord = world.firstWhich('hasWrittenOnFirst', 'object:pg');
     let currentSecondWord = world.firstWhich('hasWrittenOnSecond', 'object:pg');
@@ -269,7 +269,7 @@ export class UnlockAction extends Action {
   }
 }
 export class UnlockActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     const unlockableThings = world.which('canAttemptUnlock', 'person:player');
     const availableKeys = world.query({ and: [
       { which: ['possesses', 'person:player'] },
@@ -293,9 +293,13 @@ export class UnlockActionGenerator extends ActionGenerator {
 }
 
 export class OpenAction extends Action {
-  constructor(object) {
+  constructor(object, lid, opts) {
+    const relates = [ ['hasBeenOpenedAtLeastOnce', new AtomList(object)] ];
+    if (lid) {
+      relates.push(['possesses', ['person:player', lid]]);
+    }
     super({
-      relate: [ ['hasBeenOpenedAtLeastOnce', new AtomList(object)] ],
+      relate: relates,
       unrelate: [ ['isClosed', new AtomList(object)] ]
     },
     {
@@ -304,24 +308,45 @@ export class OpenAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
+      handsFullObject: (query, conceptTable) => {
+        const handsFullObject = query({firstWhich: ['handsAreFullWith', 'person:player']});
+        if (handsFullObject) {
+          return conceptTable.
+            get(handsFullObject).
+            render('title', query, conceptTable);
+        } else {
+          return '';
+        }
+      },
       message: template`You open the ${'objectName'}`,
-      tag: template`Open the ${'objectName'}`
-    });
+      tag: template`Open the ${'objectName'}`,
+      failMessage: template`You can't open the ${'objectName'} while your hands are full with the open ${'handsFullObject'}! That would be a mess.`
+    },
+    opts);
   }
 }
 export class OpenActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     const openableThings = world.which('canOpen', 'person:player');
     return openableThings.arrayMap((openable) => {
-      return new OpenAction(openable);
+      const handsFullObject = world.firstWhich('handsAreFullWith', 'person:player');
+      const lid = world.firstWhich('hasLid', openable);
+      return new OpenAction(openable, lid, {willFail: handsFullObject});
     });
   }
 }
 
 export class CloseAction extends Action {
-  constructor(object) {
+  constructor(object, lid, opts) {
+    const relates = [ ['isClosed', new AtomList(object)] ]
+    const unrelates = [];
+    if (lid) {
+      unrelates.push(['possesses', ['person:player', lid]]);
+      relates.push(['locatedIn', ['lid', 'void']]);
+    }
     super({
-      relate: [ ['isClosed', new AtomList(object)] ]
+      relate: relates,
+      unrelate: unrelates
     },
     {
       objectName: (query, conceptTable) => {
@@ -330,15 +355,19 @@ export class CloseAction extends Action {
           render('title', query, conceptTable);
       },
       message: template`You close the ${'objectName'}`,
-      tag: template`Close the ${'objectName'}`
-    });
+      tag: template`Close the ${'objectName'}`,
+      failMessage: template`You can't close the ${'objectName'} without the lid!`
+    },
+    opts);
   }
 }
 export class CloseActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     const closeableThings = world.which('canClose', 'person:player');
     return closeableThings.arrayMap((closeable) => {
-      return new CloseAction(closeable);
+      const lid = world.firstWhich('hasLid', closeable);
+      const lidIsMissing = lid && !world.check('possesses', ['person:player', lid]);
+      return new CloseAction(closeable, lid, {willFail: lidIsMissing});
     });
   }
 }
@@ -364,7 +393,7 @@ export class ExamineAction extends Action {
   }
 }
 export class ExamineActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     const examinableThings = world.which('canExamine', 'person:player');
     return examinableThings.arrayMap((examinable) => {
       return new ExamineAction(examinable);
@@ -395,7 +424,7 @@ export class PayDollarAction extends Action {
   }
 }
 export class PayDollarActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     if (world.check('canPay', ['person:player', 'object:vending-machine'])) {
       return new PayDollarAction();
     } else {
@@ -425,7 +454,7 @@ export class BuyChipsAction extends Action {
   }
 }
 export class BuyChipsActionGenerator extends ActionGenerator {
-  _generateActions(world) {
+  generateActions(world) {
     if (world.check('canGetChipsFrom', ['person:player', 'object:vending-machine'])) {
       return new BuyChipsAction();
     } else {

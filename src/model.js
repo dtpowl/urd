@@ -131,7 +131,12 @@ export class Model {
   }
 
   check(relationName, atoms) {
-    const resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
+    let resolvedAtoms;
+    try {
+      resolvedAtoms = new AtomList(this._resolveQueryArguments(atoms));
+    } catch {
+      debugger
+    }
     resolvedAtoms.forEach((atom) => {
       if (!this._atoms.has(atom)) {
         throw `Cannot evaluate predicate for unknown atom ${atom.asString()}`;
@@ -152,13 +157,13 @@ export class Model {
       throw `wrong arity for relation ${relationName}`;
     }
 
-    if (derivedRelationArity == 1) {
-//      return this.
-    }
-
     const subject = resolvedAtoms.first();
     const objects = resolvedAtoms.rest();
-    return this.which(relationName, subject).has(objects);
+    if (derivedRelationArity == 1) {
+      return this.subjects(relationName, atoms).has(subject);
+    } else {
+      return this.which(relationName, subject).has(objects);
+    }
   }
 
   subjects(relationName) {
@@ -181,6 +186,20 @@ export class Model {
     }
 
     throw `unknown relation ${relationName}`;
+  }
+
+  bool(queryBody) {
+    const intermediateVal = this.query(queryBody);
+    if (typeof intermediateVal == 'bool') {
+      return intermediateVal;
+    }
+    if (SemanticSet.isSemanticSet(intermediateVal)) {
+      return intermediateVal.size > 0;
+    }
+    if (AtomList.isAtomList(intermediateVal)) {
+      return intermediateVal.length > 0;
+    }
+    throw "unexpected query result type!";
   }
 
   parentQuery(queryBody) {
@@ -305,10 +324,12 @@ export class Model {
     }
   }
 
-  query({ and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent }) {
-    const argCount = [and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent].filter((x) => Boolean(x));
+  query({ and, or, not, which, firstWhich, anyWhich, allWhich, check, subjects, propositions, parent, bool }) {
+    const argCount = [and, or, not, which, firstWhich, anyWhich,
+                      allWhich, check, subjects, propositions,
+                      parent, bool].filter((x) => Boolean(x));
     if (argCount > 1) {
-      throw "query accepts exactly one of: and, or, not, which, firstWhich, check, subjects, propositions, parent";
+      throw "query accepts exactly one of: and, or, not, which, firstWhich, check, subjects, propositions, parent, bool";
     }
 
     let key;
@@ -345,6 +366,9 @@ export class Model {
 
     } else if (subjects) {
       returnVal = this.subjects(subjects);
+
+    } else if (bool) {
+      returnVal = this.bool(bool);
 
     } else if (parent) {
       returnVal = this.parentQuery(parent);

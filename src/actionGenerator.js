@@ -1,3 +1,4 @@
+// todo — don't think the caching is needed here
 export class ActionGenerator {
   constructor() {
     this._lastWorldVersion = null;
@@ -6,15 +7,16 @@ export class ActionGenerator {
 
   getActions(world) {
     if (world.uid == this._lastWorldVersion) {
+      console.log("cache hit!");
       return this._cachedActions;
     }
 
     this._lastWorldVersion = world.uid;
-    this._cachedActions = this._generateActions(world);
+    this._cachedActions = this.generateActions(world);
     return this._cachedActions;
   }
 
-  _generateActions(world) {
+  generateActions(world) {
     throw "Not implemented in abstract class";
   }
 }

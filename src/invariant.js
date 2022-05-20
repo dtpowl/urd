@@ -168,15 +168,26 @@ export class Supervenient extends Invariant {
 
   afterRelate(relation, atoms) {
     const subject = atoms.first();
-    const objects = atoms.rest();
+    const object = atoms.rest();
 
-    if (relation != this._locatedIn) { return {}; }
+    if (relation == this._locatedIn) {
+      return {
+        relate: this._possesses.relatedObjectsForSubject(subject).arrayMap((possessedItem) => {
+          return [this._locatedIn, new AtomList(possessedItem, object)];
+        })
+      };
+    }
 
-    return {
-      relate: this._possesses.relatedObjectsForSubject(subject).arrayMap((possessedItems) => {
-        return [this._locatedIn, new AtomList(possessedItems, objects)];
-      })
-    };
+    if (relation == this._possesses) {
+      return {
+        relate: this._locatedIn.relatedObjectsForSubject(subject).arrayMap((location) => {
+          return [this._locatedIn, new AtomList(object, location)];
+        })
+      };
+    }
+
+
+    return {};
   }
 }
 
