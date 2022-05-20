@@ -6,9 +6,12 @@ export class Observer {
     this._stateConditions = stateConditions || [];
     this._modelCondition = modelCondition;
     this._effect = effect;
+
+    this._preEventStateValues = null;
+    this._preEventModelValue = null;
   }
 
-  examine(model) {
+  examineModel(model) {
     if (this._query) {
       return model.query(this._query);
     } else {
@@ -16,31 +19,56 @@ export class Observer {
     }
   }
 
-  consider(world, model, oldValue) {
-    const stateConditionMet = !this._stateConditions ||
-          this._stateConditions.every((condition) => {
-            const concept = world.getConcept(condition[0]);
-            const stateValue = concept.getState(world, condition[1]);
-            const targetValue = condition[2];
-            return stateValue == targetValue;
-          });
+  examineConceptState(world) {
+    return this._stateConditions.map((condition) => {
+      const concept = world.getConcept(condition[0]);
+      const stateValue = concept.getState(world, condition[1]);
+    });
+  }
 
+  stateChangedAndMatches(world) {
+    if (!this._stateCondtions) {
+      return false;
+    }
 
-    if (!stateConditionMet) { return null; }
+    if (this.examineConceptState(world).every((val, i) => {
+      return val == this._preEventStateValues[i];
+    })) {
+      return false;
+    }
 
-    if (this._modelCondition && !model.query(this._modelCondition)) {
+    return this._stateConditions.every((condition) => {
+      const concept = world.getConcept(condition[0]);
+      const stateValue = concept.getState(world, condition[1]);
+      const targetValue = condition[2];
+      return stateValue == targetValue;
+    });
+  }
+
+  newModelValue(world) {
+    const val = this.examineModel(world._model);
+    if (!val || val.identical(this._preEventModelValue)) {
       return null;
-    }
-
-    if (this._query) {
-      const newValue = this.examine(model);
-      if (!newValue.identical(oldValue)) {
-        return this._effect(newValue, oldValue, model);
-      }
     } else {
-      return this._effect(null, null, model);
+      return val;
     }
+  }
 
+  prepare(world) {
+    this._preEventStateValues = this.examineConceptState(world);
+    this._preEventModelValue = this.examineModel(world._model);
+  }
+
+  shouldFire(world) {
+    return this.modelChanged(world) || this.stateChangedAndMatches(world);
+  }
+
+  consider(world) {
+    const newModelValue = this.newModelValue(world);
+    if (newModelValue !== null) {
+      debugger
+      return this._effect(newModelValue, this._preEventModelValue, world._model);
+    }
     return null;
   }
 }
