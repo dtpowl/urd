@@ -206,7 +206,6 @@ export class WriteNounAction extends Action {
           get(currentFirstWord).
           render('title', query, conceptTable);
       },
-      message: template`You carefully inscribe the word ${'wordName'} on the slate.`,
       tag: template`Write ${'wordName'} on the ${'objectName'}, after ${'adjectiveName'}`,
       message: (query, conceptTable) => {
         const mutObj = conceptTable.get('object:mut-1');
