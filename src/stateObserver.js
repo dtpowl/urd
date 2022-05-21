@@ -8,9 +8,6 @@ export class StateObserver {
   }
 
   examineConceptState(world) {
-    if (this._stateConditions.length > 0) {
-      console.log("_sC", this._stateConditions);
-    }
     return this._stateConditions.map((condition) => {
       const concept = world.getConcept(condition[0]);
       return concept.getState(world, condition[1]);

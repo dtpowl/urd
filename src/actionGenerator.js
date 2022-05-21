@@ -7,7 +7,6 @@ export class ActionGenerator {
 
   getActions(world) {
     if (world.uid == this._lastWorldVersion) {
-      console.log("cache hit!");
       return this._cachedActions;
     }
 

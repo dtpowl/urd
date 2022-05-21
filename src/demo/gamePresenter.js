@@ -19,7 +19,12 @@ export class GamePresenter {
   inventory(world) {
     const carried = world.which('possesses', 'person:player');
     return carried.arrayMap((x) => {
-      return indefArt(this.renderProperty(this.getConcept(x), 'title', world));
+      const concept = this.getConcept(x);
+      if (concept.inventoryName) {
+        return indefArt(this.renderProperty(concept, 'inventoryName', world));
+      } else {
+        return indefArt(this.renderProperty(concept, 'title', world));
+      }
     });
   }
 
@@ -70,8 +75,6 @@ export class GamePresenter {
       const objectSentence = assertionFromSubjects(objectNames, 'here');
       sceneDescParts.push(objectSentence);
     }
-
-    console.log("w:", world);
 
     return sceneDescParts;
   }

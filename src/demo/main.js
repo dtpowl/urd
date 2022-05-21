@@ -32,7 +32,8 @@ import {
   CloseActionGenerator,
   ExamineActionGenerator,
   PayDollarActionGenerator,
-  BuyChipsActionGenerator
+  BuyChipsActionGenerator,
+  EatChipsAndSalsaActionGenerator
 } from './actions.js'
 
 //
@@ -74,7 +75,7 @@ const conceptTable = new ConceptTable(
           return '';
         }
       },
-      description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}`
+      description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}<br><br>Your dining room lies beyond a glass door to the north.`
     }),
     new Concept('scene:balcony', {
       title: 'On the Balcony',
@@ -214,15 +215,31 @@ const conceptTable = new ConceptTable(
     }),
 
     new Concept('object:jar', {
-      title: 'jar of salsa'
+      title: 'jar of salsa',
+      openParen: (query) => {
+        if (query({ check: ['isClosed', 'object:jar'] } )) {
+          return '(closed)';
+        } else {
+          return '(open)';
+        }
+      },
+      inventoryName: template`jar of salsa ${'openParen'}`
     }),
 
     new Concept('object:lid', {
-      title: 'salsa jar lid'
+      title: 'salsa jar lid',
     }),
 
     new Concept('object:chips', {
-      title: 'bag of tortilla chips'
+      title: 'bag of tortilla chips',
+      openParen: (query) => {
+        if (query({ check: ['isClosed', 'object:chips'] } )) {
+          return '(closed)';
+        } else {
+          return '(open)';
+        }
+      },
+      inventoryName: template`bag of tortilla chips ${'openParen'}`
     }),
   ]);
 
@@ -266,8 +283,6 @@ const relations = [
 
   // food container mechanics
   ['hasLid', 2],
-  ['isMessyWhenOpen', 1],
-  ['isPlacedUpon', 2],
 
   // magic word semantics
   ['hasAdjectiveMeaning', 2],
@@ -383,17 +398,6 @@ let derivedRelations = [
             ]
           }
         ]
-      }
-    }
-  ],
-  [
-    'handsAreFullWith', 2, (subject) => {
-      return {
-          and: [
-            { which: ['possesses', subject] },
-            { subjects: 'isMessyWhenOpen' },
-            { not: { subjects: 'isClosed' } }
-          ]
       }
     }
   ],
@@ -632,7 +636,8 @@ const actionGenerators = [
   new OpenActionGenerator(),
   new CloseActionGenerator(),
   new PayDollarActionGenerator(),
-  new BuyChipsActionGenerator()
+  new BuyChipsActionGenerator(),
+  new EatChipsAndSalsaActionGenerator()
 ];
 
 let world = new World({
@@ -671,9 +676,6 @@ let world = new World({
 
       ['canBeOpenedManually', ['object:chips']],
       ['isClosed', ['object:chips']],
-
-      ['isMessyWhenOpen', ['object:chips']],
-      ['isMessyWhenOpen', ['object:jar']],
 
       ['hasLid', ['object:jar', 'object:lid']],
 

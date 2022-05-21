@@ -306,19 +306,8 @@ export class OpenAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
-      handsFullObject: (query, conceptTable) => {
-        const handsFullObject = query({firstWhich: ['handsAreFullWith', 'person:player']});
-        if (handsFullObject) {
-          return conceptTable.
-            get(handsFullObject).
-            render('title', query, conceptTable);
-        } else {
-          return '';
-        }
-      },
       message: template`You open the ${'objectName'}`,
-      tag: template`Open the ${'objectName'}`,
-      failMessage: template`You can't open the ${'objectName'} while your hands are full with the open ${'handsFullObject'}! That would be a mess.`
+      tag: template`Open the ${'objectName'}`
     },
     opts);
   }
@@ -327,9 +316,8 @@ export class OpenActionGenerator extends ActionGenerator {
   generateActions(world) {
     const openableThings = world.which('canOpen', 'person:player');
     return openableThings.arrayMap((openable) => {
-      const handsFullObject = world.firstWhich('handsAreFullWith', 'person:player');
       const lid = world.firstWhich('hasLid', openable);
-      return new OpenAction(openable, lid, {willFail: handsFullObject});
+      return new OpenAction(openable, lid);
     });
   }
 }
@@ -352,8 +340,8 @@ export class CloseAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
-      message: template`You close the ${'objectName'}`,
-      tag: template`Close the ${'objectName'}`,
+      message: template`You close the ${'objectName'}.`,
+      tag: template`Close the ${'objectName'}.`,
       failMessage: template`You can't close the ${'objectName'} without the lid!`
     },
     opts);
@@ -455,6 +443,31 @@ export class BuyChipsActionGenerator extends ActionGenerator {
   generateActions(world) {
     if (world.check('canGetChipsFrom', ['person:player', 'object:vending-machine'])) {
       return new BuyChipsAction();
+    } else {
+      return [];
+    }
+  }
+}
+
+
+export class EatChipsAndSalsaAction extends Action {
+  constructor() {
+    super({},
+    {
+      message: "Wow! That's delicious.",
+      tag: 'Eat a chip with salsa'
+    });
+  }
+}
+export class EatChipsAndSalsaActionGenerator extends ActionGenerator {
+  generateActions(world) {
+    if (world.query({and: [
+      { check: ['possesses', ['person:player', 'object:chips']] },
+      { check: ['possesses', ['person:player', 'object:jar']] },
+      { not: { check: ['isClosed', ['object:jar']] } },
+      { not: { check: ['isClosed', ['object:chips']] } }
+    ]})) {
+      return new EatChipsAndSalsaAction();
     } else {
       return [];
     }
