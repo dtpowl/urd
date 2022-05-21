@@ -306,7 +306,7 @@ export class OpenAction extends Action {
           get(object).
           render('title', query, conceptTable);
       },
-      message: template`You open the ${'objectName'}`,
+      message: template`You open the ${'objectName'}.`,
       tag: template`Open the ${'objectName'}`
     },
     opts);

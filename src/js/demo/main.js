@@ -75,7 +75,7 @@ const conceptTable = new ConceptTable(
           return '';
         }
       },
-      description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}<br><br>Your dining room lies beyond a glass door to the north.`
+      description: template`You are in your studio. On a table in the center of the room rests your trusty poesiograph.${'writingDescription'}`
     }),
     new Concept('scene:balcony', {
       title: 'On the Balcony',
@@ -629,15 +629,15 @@ const stateObservers = [
 
 const actionGenerators = [
   new MoveActionGenerator(),
+  new EatChipsAndSalsaActionGenerator(),
   new TakeActionGenerator(),
-  new EraseActionGenerator(),
-  new WriteActionGenerator(),
   new UnlockActionGenerator(),
   new OpenActionGenerator(),
   new CloseActionGenerator(),
   new PayDollarActionGenerator(),
   new BuyChipsActionGenerator(),
-  new EatChipsAndSalsaActionGenerator()
+  new EraseActionGenerator(),
+  new WriteActionGenerator()
 ];
 
 let world = new World({
